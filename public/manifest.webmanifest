@@ -1,0 +1,44 @@
+{
+  "name": "Attendly",
+  "short_name": "Attendly",
+  "description": "Personal attendance co-pilot — mark classes and plan bunks on your device.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f9fc",
+  "theme_color": "#0f6e6a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mark next class",
+      "short_name": "Mark next",
+      "description": "Open Today and focus the next unmarked class",
+      "url": "/?action=mark-next",
+      "icons": [
+        {
+          "src": "/favicon.ico",
+          "sizes": "48x48"
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "short_name": "Analytics",
+      "description": "Streaks and weekday patterns",
+      "url": "/analytics",
+      "icons": [
+        {
+          "src": "/favicon.ico",
+          "sizes": "48x48"
+        }
+      ]
+    }
+  ]
+}
