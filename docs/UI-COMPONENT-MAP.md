@@ -31,11 +31,13 @@ Use this doc to see **how the UI is organized**: every planned component, its fi
 
 | File | Purpose | Desktop (`md+`) | Mobile (`<md`) |
 |---|---|---|---|
-| `src/components/shell/app-frame.tsx` | App chrome when **signed in**; bare wrapper when signed out or on onboarding / sign-in / sign-up | Side + main row; content `max-w-[1200px]` centered | Full-width column; sticky brand + theme; bottom padding for `--nav-h` |
+| `src/components/shell/app-frame.tsx` | App chrome when **signed in**; bare full-viewport wrapper when signed out or on onboarding / sign-in / sign-up | Side + main row; content `max-w-[1200px]` centered | Full-width column; sticky brand + theme; bottom padding for `--nav-h` |
 | `src/components/shell/side-nav.tsx` | Primary navigation rail (Attendly brand + links + theme toggle + UserButton) | Visible vertical rail: Today … Settings + theme | Hidden |
 | `src/components/shell/bottom-nav.tsx` | Thumb-reach tab bar | Hidden | Fixed bottom tabs; hidden on bare routes |
 | `src/components/shell/clerk-auth-controls.tsx` | `<Show>` + UserButton (signed-in); Sign in/up fallback | Side nav footer | Mobile header |
-| `src/components/auth/landing-page.tsx` | Signed-out front page: brand, pitch, Sign in/up, theme toggle | Centered column | Same |
+| `src/components/auth/landing-page.tsx` | Signed-out front page: brand, pitch, Sign in/up, theme toggle | Wide `max-w-6xl` split (brand + CTAs) | Full-width stack; prominent CTAs |
+| `src/app/sign-in/[[...sign-in]]/page.tsx` | Dedicated Clerk SignIn | Centered card in wide chrome | Full-width centered card |
+| `src/app/sign-up/[[...sign-up]]/page.tsx` | Dedicated Clerk SignUp | Same as sign-in | Same as sign-in |
 | `src/components/shell/app-providers.tsx` | Dexie theme + a11y → `html` `data-theme` / `.dark` + a11y data attrs | Same | Same |
 | `src/components/shell/theme-toggle.tsx` | Light / dark / system → `settings.theme` | Compact in side nav header | Compact in mobile top bar; full in Settings |
 

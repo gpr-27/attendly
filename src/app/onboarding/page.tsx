@@ -59,7 +59,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <main className="flex min-h-dvh flex-col px-4 pb-10 pt-6">
+    <main className="mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full max-w-xl flex-col px-4 pb-10 pt-6 sm:px-6">
       <OnboardingIntro />
 
       <AiOnboardingTip />

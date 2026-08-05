@@ -17,10 +17,10 @@ export function OnboardingIntro() {
       <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-brand">
         Attendly
       </p>
-      <h1 className="font-display mt-2 text-3xl font-semibold tracking-tight text-ink">
+      <h1 className="font-display mt-2 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
         Set your bar
       </h1>
-      <p className="mt-2 max-w-sm text-sm leading-relaxed text-ink-soft">
+      <p className="mt-2 max-w-md text-sm leading-relaxed text-ink-soft sm:text-base">
         {first ? `Welcome, ${first}.` : "Welcome."} Criteria stay on this
         device for now (cloud sync comes later). No sample subjects — you add
         the timetable next.
