@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { addMonths, format } from "date-fns";
 import { AiOnboardingTip } from "@/components/ai/ai-assistant-panel";
-import { OnboardingAuthPrompt } from "@/components/onboarding/auth-prompt";
 import { OnboardingIntro } from "@/components/onboarding/onboarding-intro";
 import { mondayOfWeekYmd, todayYmd } from "@/lib/dates";
 
@@ -63,7 +62,6 @@ export default function OnboardingPage() {
     <main className="flex min-h-dvh flex-col px-4 pb-10 pt-6">
       <OnboardingIntro />
 
-      <OnboardingAuthPrompt />
       <AiOnboardingTip />
 
       <section className="rise rise-delay-1 space-y-6">

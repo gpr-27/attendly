@@ -11,7 +11,13 @@ const PRIMARY = NAV_ITEMS.filter((item) => item.primary);
 export function BottomNav() {
   const pathname = usePathname();
 
-  if (pathname.startsWith("/onboarding")) return null;
+  if (
+    pathname.startsWith("/onboarding") ||
+    pathname.startsWith("/sign-in") ||
+    pathname.startsWith("/sign-up")
+  ) {
+    return null;
+  }
 
   return (
     <nav

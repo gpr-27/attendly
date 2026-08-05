@@ -16,8 +16,8 @@ type ClerkAuthControlsProps = {
 };
 
 /**
- * Clerk sign-in / sign-up / account controls for app chrome.
- * Routes stay public — auth is optional for Dexie-local use.
+ * Clerk account controls for signed-in app chrome.
+ * Signed-out users see the landing page instead of the shell.
  */
 export function ClerkAuthControls({
   layout = "row",
@@ -33,7 +33,7 @@ export function ClerkAuthControls({
       )}
     >
       <Show when="signed-out">
-        <SignInButton mode="modal">
+        <SignInButton mode="modal" forceRedirectUrl="/" fallbackRedirectUrl="/">
           <button
             type="button"
             className={cn(
@@ -45,7 +45,7 @@ export function ClerkAuthControls({
             Sign in
           </button>
         </SignInButton>
-        <SignUpButton mode="modal">
+        <SignUpButton mode="modal" forceRedirectUrl="/" fallbackRedirectUrl="/">
           <button
             type="button"
             className={cn(

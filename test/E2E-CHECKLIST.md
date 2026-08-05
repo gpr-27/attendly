@@ -5,9 +5,11 @@ Use this list after deploy or before trusting a new device.
 
 **Rule:** No demo/seed data. Everything comes from what **you** enter or from **AI** parse/coach.
 
-## Fresh install
+## Auth + fresh install
 
-- [ ] Open app → redirected to `/onboarding` (empty subjects)
+- [ ] Signed out → landing only (Attendly brand + Sign in / Sign up); **no** Today/agenda/shell data
+- [ ] Visit `/timetable` (or other app route) unsigned → redirected to `/`
+- [ ] Sign in / Sign up → land on **Today**, or `/onboarding` if not onboarded yet
 - [ ] Pick 75 / 80 / 85, optional buffer, semester name/dates → Save
 - [ ] Land on **Today** with empty agenda (“Add a timetable…”) — not fake classes
 
