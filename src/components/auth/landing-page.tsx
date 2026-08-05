@@ -55,8 +55,8 @@ export function LandingPage() {
         </div>
 
         <p className="rise rise-delay-2 mt-10 max-w-xl text-sm leading-relaxed text-mute lg:mt-14">
-          Attendance stays on this device for now. Sign in to open your
-          dashboard — cloud sync comes later.
+          Sign in to open your dashboard. Your schedule and marks sync to your
+          cloud account (with an offline cache on this device).
         </p>
       </div>
     </main>
