@@ -1,8 +1,10 @@
-import { db } from "./database"
+import { db, getBoundUserId } from "./database"
 import { clearAllData } from "./repository"
 import {
   BACKUP_VERSION,
+  SETTINGS_ID,
   SUPPORTED_BACKUP_VERSIONS,
+  defaultSettings,
   type BackupPayload,
   type Settings,
 } from "./types"
@@ -10,15 +12,26 @@ import {
 /** Alias for older call sites / docs. */
 export type AttendlyBackup = BackupPayload
 
-const ALL_TABLES = [
-  db.settings,
-  db.subjects,
-  db.timetableSeries,
-  db.seriesExceptions,
-  db.calendarBlocks,
-  db.classSessions,
-  db.attendanceRecords,
-] as const
+/** Always resolve tables from the *currently bound* Dexie instance. */
+function allTables() {
+  return [
+    db.settings,
+    db.subjects,
+    db.timetableSeries,
+    db.seriesExceptions,
+    db.calendarBlocks,
+    db.classSessions,
+    db.attendanceRecords,
+  ] as const
+}
+
+function assertUserDatabaseBound(): void {
+  if (!getBoundUserId()) {
+    throw new Error(
+      "Sign in first — schedule import needs your account database.",
+    )
+  }
+}
 
 function isSupportedVersion(version: unknown): version is number {
   return (
@@ -32,6 +45,7 @@ function isSupportedVersion(version: unknown): version is number {
  * Friends / other devices get a clean slate for present/absent.
  */
 export async function exportBackup(): Promise<BackupPayload> {
+  assertUserDatabaseBound()
   const [
     settingsRows,
     subjects,
@@ -177,15 +191,29 @@ export async function importBackup(
   payload: BackupPayload,
   options?: { clearFirst?: boolean; rematerialize?: boolean },
 ): Promise<void> {
+  assertUserDatabaseBound()
   const clearFirst = options?.clearFirst ?? true
   const shouldRematerialize = options?.rematerialize ?? true
   if (clearFirst) await clearAllData()
 
-  await db.transaction("rw", [...ALL_TABLES], async () => {
+  const tables = allTables()
+  await db.transaction("rw", [...tables], async () => {
     // Explicitly clear marks even if clearFirst was false.
     await db.attendanceRecords.clear()
 
-    if (payload.settings) await db.settings.put(payload.settings)
+    if (payload.settings) {
+      // Ensure app does not bounce to empty onboarding after import.
+      await db.settings.put({ ...payload.settings, onboarded: true })
+    } else if (payload.subjects.length > 0) {
+      const { defaultSettings, SETTINGS_ID } = await import("./types")
+      const base = defaultSettings()
+      await db.settings.put({
+        ...base,
+        id: SETTINGS_ID,
+        onboarded: true,
+        updatedAt: new Date().toISOString(),
+      })
+    }
     if (payload.subjects.length) await db.subjects.bulkPut(payload.subjects)
     if (payload.timetableSeries.length) {
       await db.timetableSeries.bulkPut(payload.timetableSeries)
@@ -200,6 +228,14 @@ export async function importBackup(
       await db.classSessions.bulkPut(payload.classSessions)
     }
   })
+
+  // Verify write landed in the bound account DB (guards against stale table refs).
+  const subjectCount = await db.subjects.count()
+  if (payload.subjects.length > 0 && subjectCount === 0) {
+    throw new Error(
+      "Import did not save to your account database. Try again after a refresh.",
+    )
+  }
 
   if (shouldRematerialize) {
     await rematerializeBestEffort()

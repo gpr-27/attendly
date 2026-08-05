@@ -52,6 +52,10 @@ Read this anytime to understand **what changed** and **where it lives**.
 
 ## Changelog
 
+### 2026-08-05 — Fix import vanishing on production reload
+- Root cause: `export-import.ts` captured `ALL_TABLES` from the unbound Dexie at module load, so imports could clear the user DB then write into `AttendlyDB__unbound`. Reload opened the empty per-user DB.
+- Fix: resolve tables live via `allTables()`, require `getBoundUserId()`, verify subject count after import, set `onboarded: true` on import, adopt/clear leftover `__unbound` data on bind.
+
 ### 2026-08-05 — Per-Clerk-user Dexie + Vercel Clerk env fix
 - Production 500 was `Missing publishableKey` — Clerk keys were only in `.env.local`; set on Vercel Production/Preview and redeployed.
 - Each signed-in Clerk user now gets `AttendlyDB_u_<userId>` IndexedDB (no shared attendance across accounts on one browser). Legacy `AttendlyDB` migrates once to the first account that claims it.
