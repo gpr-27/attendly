@@ -10,7 +10,13 @@ import { cn } from "@/lib/utils/cn";
 export function SideNav() {
   const pathname = usePathname();
 
-  if (pathname.startsWith("/onboarding")) return null;
+  if (
+    pathname.startsWith("/onboarding") ||
+    pathname.startsWith("/sign-in") ||
+    pathname.startsWith("/sign-up")
+  ) {
+    return null;
+  }
 
   return (
     <aside className="hidden w-56 shrink-0 md:block lg:w-60">

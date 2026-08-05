@@ -31,23 +31,26 @@ Use this doc to see **how the UI is organized**: every planned component, its fi
 
 | File | Purpose | Desktop (`md+`) | Mobile (`<md`) |
 |---|---|---|---|
-| `src/components/shell/app-frame.tsx` | App chrome: wraps all routes, chooses nav, sets content width/padding; mobile top bar + AI FAB | Side + main row; content `max-w-[1200px]` centered; no bottom padding for nav | Full-width column; sticky brand + theme; bottom padding for `--nav-h`; Ask AI FAB when route has `shellFab` |
-| `src/components/shell/side-nav.tsx` | Primary navigation rail (Attendly brand + links + theme toggle) | Visible vertical rail: Today … Settings + theme | Hidden |
-| `src/components/shell/bottom-nav.tsx` | Thumb-reach tab bar | Hidden | Fixed bottom tabs (core routes); hidden on `/onboarding` |
+| `src/components/shell/app-frame.tsx` | App chrome when **signed in**; bare wrapper when signed out or on onboarding / sign-in / sign-up | Side + main row; content `max-w-[1200px]` centered | Full-width column; sticky brand + theme; bottom padding for `--nav-h` |
+| `src/components/shell/side-nav.tsx` | Primary navigation rail (Attendly brand + links + theme toggle + UserButton) | Visible vertical rail: Today … Settings + theme | Hidden |
+| `src/components/shell/bottom-nav.tsx` | Thumb-reach tab bar | Hidden | Fixed bottom tabs; hidden on bare routes |
+| `src/components/shell/clerk-auth-controls.tsx` | `<Show>` + UserButton (signed-in); Sign in/up fallback | Side nav footer | Mobile header |
+| `src/components/auth/landing-page.tsx` | Signed-out front page: brand, pitch, Sign in/up, theme toggle | Centered column | Same |
 | `src/components/shell/app-providers.tsx` | Dexie theme + a11y → `html` `data-theme` / `.dark` + a11y data attrs | Same | Same |
 | `src/components/shell/theme-toggle.tsx` | Light / dark / system → `settings.theme` | Compact in side nav header | Compact in mobile top bar; full in Settings |
 
 **Nav notes**
 
-- Onboarding (`/onboarding`) is **bare**: no side nav, no bottom nav.  
+- **Auth gate:** `src/proxy.ts` protects all routes except `/`, `/sign-in`, `/sign-up`, `/__clerk`. Unsigned users never see the app shell or attendance data.
+- Onboarding / sign-in / sign-up are **bare**: no side nav, no bottom nav.
 - Secondary routes (Calendar, Import, Plan) live in the **side nav** on desktop; on mobile they are reachable from Today empty-hub CTAs, Settings, or Insights — not every tab must crowd the bottom bar.  
-- Active route styling uses pathname prefixes (`/` exact for Today).
+- Active route styling uses pathname prefixes (`/` exact for Today when signed in).
 
 ---
 
 ## 3. Today (home ritual)
 
-Route: `/` → `src/app/page.tsx` mounts `TodayScreen`.
+Route: `/` → signed-out: `LandingPage`; signed-in: `TodayScreen` (`auth()` in `page.tsx`).
 
 | File | Purpose | Desktop | Mobile |
 |---|---|---|---|
@@ -158,9 +161,10 @@ Coach must work when `GROQ_API_KEY` is set server-side; show a clear error if th
 
 | File | Purpose | Desktop | Mobile |
 |---|---|---|---|
-| `src/app/onboarding/page.tsx` | First-run: criteria 75/80/85, semester, buffer → `saveSettings({ onboarded: true })` | Centered form in bare frame (no nav) | Full-screen steps, large taps |
-| `src/components/onboarding/onboarding-intro.tsx` | Auth-aware headline (`Show` signed-in/out copy) | Same | Same |
-| `src/components/onboarding/auth-prompt.tsx` | Soft optional Sign in / Sign up nudge (does not block Start) | Same | Same |
+| `src/app/onboarding/page.tsx` | First-run (auth required): criteria 75/80/85, semester, buffer → `saveSettings({ onboarded: true })` | Centered form in bare frame (no nav) | Full-screen steps, large taps |
+| `src/components/onboarding/onboarding-intro.tsx` | Welcome headline (signed-in; criteria still on-device) | Same | Same |
+| `src/app/sign-in/[[...sign-in]]/page.tsx` | Clerk `<SignIn />` → redirect `/` | Centered | Same |
+| `src/app/sign-up/[[...sign-up]]/page.tsx` | Clerk `<SignUp />` → redirect `/` | Centered | Same |
 | Bare chrome (`AppFrame`) | Centered `ThemeToggle` + `ClerkAuthControls` (Sign in/up or `UserButton`) | Same | Same |
 
 ---
@@ -186,8 +190,11 @@ Prefer small, reusable pieces under `src/components/ui/` (or `src/components/sha
 
 | Route | Page entry | Primary components |
 |---|---|---|
-| `/` | `src/app/page.tsx` | `today-screen`, `risk-banner`, `agenda-list`, `mark-actions`, `empty-hub`, `ai-dock` |
-| `/onboarding` | `src/app/onboarding/page.tsx` | Onboarding flow (bare shell) |
+| `/` (signed out) | `src/app/page.tsx` | `landing-page` |
+| `/` (signed in) | `src/app/page.tsx` | `today-screen`, `risk-banner`, `agenda-list`, `mark-actions`, `empty-hub`, `ai-dock` |
+| `/sign-in` | `src/app/sign-in/[[...sign-in]]/page.tsx` | Clerk `<SignIn />` (bare) |
+| `/sign-up` | `src/app/sign-up/[[...sign-up]]/page.tsx` | Clerk `<SignUp />` (bare) |
+| `/onboarding` | `src/app/onboarding/page.tsx` | Onboarding flow (bare shell; auth required) |
 | `/timetable` | `src/app/timetable/page.tsx` | `timetable-page`, day-chips, slot-list, add-slot-form, toolbar |
 | `/subjects` | `src/app/subjects/page.tsx` | `subjects-page`, subject-card, pct-ring |
 | `/calendar` | `src/app/calendar/page.tsx` | `calendar-page`, month-grid |
@@ -198,7 +205,7 @@ Prefer small, reusable pieces under `src/components/ui/` (or `src/components/sha
 | `/plan/safe-week` | `src/app/plan/safe-week/page.tsx` | `safe-week-page` / planner |
 | `/settings` | `src/app/settings/page.tsx` | Criteria, working days, Notifications, backup |
 
-All of the above sit inside `AppFrame` except bare onboarding.
+Signed-in app routes sit inside `AppFrame` shell. Bare: landing (signed out), onboarding, sign-in, sign-up.
 
 ---
 

@@ -52,18 +52,25 @@ Read this anytime to understand **what changed** and **where it lives**.
 
 ## Changelog
 
+### 2026-08-05 — Auth-required app (signed-out landing)
+- **What:** App content now requires Clerk sign-in. `src/proxy.ts` uses `clerkMiddleware` + `createRouteMatcher` (protected-first): public `/`, `/sign-in`, `/sign-up`, `/__clerk`; everything else `auth.protect()` → redirect to landing. Signed-out `/` shows polished Attendly landing (brand, pitch, Sign in/Sign up modals, theme toggle, on-device note) — **no** Today shell/data. Signed-in `/` → `TodayScreen` (then `/onboarding` if Dexie settings not onboarded). App shell only when signed in. Removed optional onboarding auth prompt. Still Dexie-local after login (v1).
+- **Files:** `src/proxy.ts`, `src/app/page.tsx`, `src/components/auth/landing-page.tsx`, `src/app/sign-in/[[...sign-in]]/page.tsx`, `src/app/sign-up/[[...sign-up]]/page.tsx`, `src/components/shell/{app-frame,clerk-auth-controls,side-nav,bottom-nav}.tsx`, `src/components/onboarding/onboarding-intro.tsx`, deleted `auth-prompt.tsx`, `.env.example`, `docs/UI-COMPONENT-MAP.md`, this journal.
+- **Env:** existing Clerk keys + optional `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in`, `SIGN_UP_URL`, `*_FALLBACK_REDIRECT_URL=/`.
+- **Verify:** `npm run build`.
+- **For user:** Signed out → landing only. Sign in → Today (or onboarding). Protected routes bounce to `/`.
+
 ### 2026-08-05 — Onboarding page + Clerk UI taste
 - **What:** Front/onboarding (“Set your bar”) now reads as Clerk-aware without blocking Dexie-local setup. Bare top bar keeps centered theme toggle and shows Sign in / Sign up (`Show` + modal buttons) or `UserButton` when signed in. Auth-aware intro copy (local-on-device vs welcome + still local). Soft optional account prompt. Clerk modals/UserButton use Attendly teal via `attendlyClerkAppearance` (CSS vars track light/dark).
 - **Files:** `src/app/onboarding/page.tsx`, `src/components/onboarding/{onboarding-intro,auth-prompt}.tsx`, `src/lib/clerk-appearance.ts`, `src/app/layout.tsx`, `src/components/shell/{app-frame,clerk-auth-controls}.tsx`, `docs/UI-COMPONENT-MAP.md`, this journal.
 - **Verify:** `npm run build`.
-- **For user:** Onboarding stays completable unsigned; Sign in is optional polish for later sync.
+- **For user:** Onboarding stays completable unsigned; Sign in is optional polish for later sync. *(Superseded: auth now required — see entry above.)*
 
 ### 2026-08-05 — Clerk auth (optional sign-in)
 - **What:** Added `@clerk/nextjs` with modern App Router APIs. `src/proxy.ts` runs `clerkMiddleware()` (Next 16 filename; open by default so Dexie-local browsing still works unsigned). `ClerkProvider` wraps the app inside `<body>`. Shell chrome shows `<Show>` + SignIn/SignUp/UserButton (no SignedIn/SignedOut).
 - **Files:** `src/proxy.ts`, `src/app/layout.tsx`, `src/components/shell/clerk-auth-controls.tsx`, `app-frame.tsx`, `side-nav.tsx`, `.env.example`, this journal.
 - **Env:** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` in `.env.local` (not committed). Copy from Clerk Dashboard API keys.
 - **Verify:** `npm run build`.
-- **For user:** Add keys → `npm run dev` → Sign up → UserButton in header/sidebar.
+- **For user:** Add keys → `npm run dev` → Sign up → UserButton in header/sidebar. *(Superseded: middleware now protects app routes.)*
 
 ### 2026-08-05 — Vercel deploy readiness check
 - **Verdict:** **READY WITH CAVEATS** — `npm run test` (170) + `npm run build` pass; standard Next App Router (no `output: export`); AI routes `runtime = "nodejs"`; Dexie is client-only; secrets gitignored; no broken imports from deleted `week-preview` / share-code.
@@ -580,9 +587,11 @@ Read this anytime to understand **what changed** and **where it lives**.
 | Text parse API | `src/app/api/ai/parse-timetable-text/route.ts` | `POST` plain text/PDF extract → subjects/slots |
 | Coach API | `src/app/api/ai/coach/route.ts` | `POST /api/ai/coach` |
 | AI status API | `src/app/api/ai/status/route.ts` | `GET /api/ai/status` |
-| Shell | `src/components/shell/`, `src/app/layout.tsx`, `src/app/globals.css` | Responsive frame: side nav `md+`, bottom nav mobile, theme toggle, Clerk auth controls, AI FAB |
-| Clerk proxy | `src/proxy.ts` | `clerkMiddleware()` (Next 16); matcher includes `/__clerk/:path*`; routes public by default |
-| Clerk UI | `src/components/shell/clerk-auth-controls.tsx`, `src/lib/clerk-appearance.ts` | `<Show>` + SignIn/SignUp/UserButton; Attendly teal appearance |
+| Shell | `src/components/shell/`, `src/app/layout.tsx`, `src/app/globals.css` | Signed-in frame: side nav `md+`, bottom nav mobile, theme toggle, UserButton; bare when signed out |
+| Clerk proxy | `src/proxy.ts` | `clerkMiddleware` + `createRouteMatcher`; public `/`, `/sign-in`, `/sign-up`, `/__clerk`; else `auth.protect()` → `/` |
+| Landing | `src/components/auth/landing-page.tsx`, `src/app/page.tsx` | Signed-out front page; signed-in mounts `TodayScreen` via `auth()` |
+| Sign-in / Sign-up | `src/app/sign-in/[[...sign-in]]/`, `src/app/sign-up/[[...sign-up]]/` | Clerk `<SignIn />` / `<SignUp />` → redirect `/` |
+| Clerk UI | `src/components/shell/clerk-auth-controls.tsx`, `src/lib/clerk-appearance.ts` | `<Show>` + UserButton (shell); SignIn/SignUp on landing; Attendly teal appearance |
 | Shared AI | `src/components/ai/`, `src/hooks/use-coach-chat.ts`, `src/lib/ai/page-ai-config.ts` | Panel / FAB / page cards + pageContext |
 | Day agenda | `src/lib/dates.ts`, `src/lib/today/load-day-agenda.ts`, `day-navigator`, `day-agenda` | Any-day class list + marks |
 | Shared UI | `src/components/ui/` | Button, card, empty-hub, page-header, pct-ring re-export |
@@ -590,7 +599,7 @@ Read this anytime to understand **what changed** and **where it lives**.
 | Today UI | `src/app/page.tsx`, `src/components/today/` | Standing hero, empty hub, agenda, mark actions, AI dock |
 | Notifications | `src/lib/notifications/` | Local Notification API + optional SW; schedule from Today |
 | Service worker | `public/sw.js` | Show/click local notifications (no push) |
-| Onboarding | `src/app/onboarding/page.tsx`, `src/components/onboarding/` | Criteria / semester / buffer → Dexie; auth-aware copy + soft prompt |
+| Onboarding | `src/app/onboarding/page.tsx`, `src/components/onboarding/` | Auth-required; criteria / semester / buffer → Dexie |
 | Settings UI | `src/app/settings/page.tsx` | Criteria + a11y + notifications + Summary PDF + schedule backup + Daily periods |
 | Daily periods editor | `src/components/settings/daily-periods-editor.tsx` | Edit fixed college slot template (`Settings.periodSlots`) |
 | Period slot helpers | `src/lib/timetable/period-slots.ts` | Normalize / resolve `slotIndex` → times |
@@ -612,8 +621,8 @@ Read this anytime to understand **what changed** and **where it lives**.
 ## Architecture snapshot
 
 ```
-Attendly PWA (personal; optional Clerk sign-in)
-  Clerk: ClerkProvider + proxy.ts clerkMiddleware (routes public; auth UI in shell)
+Attendly PWA (personal; Clerk sign-in required for app)
+  Clerk: ClerkProvider + proxy.ts protect (landing public; app routes auth)
   Dexie AttendlyDB (empty until user/AI adds data)
     ← Today / Timetable / Subjects / Calendar / Analytics / Plan / Import / Settings
   materializeSessions: series (± weekParity) + exceptions − calendarBlocks → classSessions
@@ -630,7 +639,7 @@ Attendly PWA (personal; optional Clerk sign-in)
   GET /api/ai/status → key configured flags (no secrets)
 ```
 
-- **Storage:** Dexie for attendance data — no Postgres/Mongo/Redis; **no demo seed**. Clerk optional (identity only; marks still on-device for v1).
+- **Storage:** Dexie for attendance data — no Postgres/Mongo/Redis; **no demo seed**. Clerk required for UX gate (identity); marks still on-device for v1.
 - **Host:** Vercel serves app + serverless AI Route Handlers (`src/app/api/ai/*`, `runtime = "nodejs"`); keys from `process.env` only; attendance rows stay on-device
 - **Deploy readiness (2026-08-05):** READY WITH CAVEATS — see Changelog entry above
 
@@ -647,7 +656,7 @@ npm run test:integration
 npm run test:api      # mocked Gemini/Groq routes
 ```
 
-Env: `.env.local` with `GROQ_API_KEY`, `GEMINI_API_KEY`, and Clerk keys `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` (gitignored). See `.env.example`. Never overwrite `.env.local` secrets. Manual UI checks: `test/E2E-CHECKLIST.md`.
+Env: `.env.local` with `GROQ_API_KEY`, `GEMINI_API_KEY`, Clerk keys + `NEXT_PUBLIC_CLERK_SIGN_IN_URL` / `SIGN_UP_URL` / fallback redirects (gitignored). See `.env.example`. Never overwrite `.env.local` secrets. Manual UI checks: `test/E2E-CHECKLIST.md`.
 
 ## 2026-08-05 — Push & Vercel production deploy
 
