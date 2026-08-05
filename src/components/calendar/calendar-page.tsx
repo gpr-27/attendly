@@ -165,8 +165,8 @@ export function CalendarPage() {
 
   return (
     <main className="w-full max-w-5xl px-4 pb-10 pt-6 sm:px-6 lg:px-8">
-      <header className="rise mb-6 flex items-end justify-between gap-3">
-        <div>
+      <header className="rise mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-brand">
             Month scan
           </p>

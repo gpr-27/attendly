@@ -78,7 +78,7 @@ export function TimetableToolbar({
                       on ? prev.filter((d) => d !== t.day) : [...prev, t.day],
                     )
                   }
-                  className={`min-h-9 rounded-lg px-3 text-xs font-semibold ${
+                  className={`min-h-10 rounded-lg px-3 text-xs font-semibold ${
                     on
                       ? "bg-brand text-white"
                       : "bg-surface-raised text-ink-soft ring-1 ring-line"

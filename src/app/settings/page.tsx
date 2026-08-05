@@ -478,7 +478,7 @@ export default function SettingsPage() {
                     onClick={() =>
                       void persistNotify({ notifyPreClassMinutes: mins })
                     }
-                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50 ${
+                    className={`min-h-10 rounded-lg px-3 py-2 text-xs font-semibold disabled:opacity-50 ${
                       notifyPreClassMinutes === mins
                         ? "bg-brand text-white"
                         : "border border-line bg-mist text-brand-deep"

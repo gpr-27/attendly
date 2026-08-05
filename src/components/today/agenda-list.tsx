@@ -58,19 +58,19 @@ export function AgendaList({
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
             href="/timetable"
-            className="rounded-full bg-brand px-4 py-2 text-xs font-semibold text-white"
+            className="min-h-10 rounded-full bg-brand px-4 py-2 text-xs font-semibold text-white"
           >
             Edit timetable
           </Link>
           <Link
             href="/import"
-            className="rounded-full border border-line bg-mist/50 px-4 py-2 text-xs font-semibold text-ink"
+            className="min-h-10 rounded-full border border-line bg-mist/50 px-4 py-2 text-xs font-semibold text-ink"
           >
             Import photo
           </Link>
           <Link
             href="/plan"
-            className="rounded-full border border-line px-4 py-2 text-xs font-semibold text-ink-soft"
+            className="min-h-10 rounded-full border border-line px-4 py-2 text-xs font-semibold text-ink-soft"
           >
             Plan bunks
           </Link>

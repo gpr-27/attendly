@@ -79,7 +79,7 @@ export function RiskBanner({
           </h2>
         </div>
         <div className="text-right">
-          <p className="font-display text-3xl font-semibold leading-none tabular-nums">
+          <p className="font-display text-2xl font-semibold leading-none tabular-nums sm:text-3xl">
             {overallPct.toFixed(1)}
             <span className="text-lg">%</span>
           </p>

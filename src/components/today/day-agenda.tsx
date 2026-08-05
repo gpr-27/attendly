@@ -249,7 +249,7 @@ export function DayAgenda({
               type="button"
               disabled={busy}
               onClick={() => void handleClearHoliday()}
-              className="rounded-full px-3 py-1.5 text-xs font-semibold text-ink-soft ring-1 ring-line disabled:opacity-50"
+              className="min-h-10 rounded-full px-3 py-2 text-xs font-semibold text-ink-soft ring-1 ring-line disabled:opacity-50"
             >
               Clear holiday
             </button>
@@ -258,7 +258,7 @@ export function DayAgenda({
               type="button"
               disabled={busy || loading}
               onClick={() => void handleMarkHoliday()}
-              className="rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+              className="min-h-10 rounded-full bg-brand px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
             >
               Mark day holiday
             </button>

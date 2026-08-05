@@ -117,7 +117,7 @@ export function DailyPeriodsEditor() {
               Start
               <input
                 type="time"
-                className="mt-1 block w-[7.5rem] rounded-lg border border-line bg-surface-raised px-2.5 py-2 text-sm text-ink"
+                className="mt-1 block w-full rounded-lg border border-line bg-surface-raised px-2.5 py-2 text-sm text-ink sm:w-[7.5rem]"
                 value={slot.startTime}
                 onChange={(e) =>
                   updateSlot(index, { startTime: e.target.value })
@@ -128,7 +128,7 @@ export function DailyPeriodsEditor() {
               End
               <input
                 type="time"
-                className="mt-1 block w-[7.5rem] rounded-lg border border-line bg-surface-raised px-2.5 py-2 text-sm text-ink"
+                className="mt-1 block w-full rounded-lg border border-line bg-surface-raised px-2.5 py-2 text-sm text-ink sm:w-[7.5rem]"
                 value={slot.endTime}
                 onChange={(e) => updateSlot(index, { endTime: e.target.value })}
               />

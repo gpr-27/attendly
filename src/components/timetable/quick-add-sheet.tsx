@@ -212,7 +212,7 @@ export function QuickAddSheet({
         if (e.target === e.currentTarget && !busy) onClose();
       }}
     >
-      <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-line bg-surface-raised px-4 pb-8 pt-4 shadow-xl sm:rounded-3xl sm:px-5">
+      <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-line bg-surface-raised px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-4 shadow-xl sm:rounded-3xl sm:px-5">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-brand">
@@ -485,7 +485,7 @@ export function QuickAddSheet({
                         type="button"
                         onClick={() => setWeekParity(opt.value)}
                         className={cn(
-                          "min-h-9 rounded-full px-3 text-xs font-semibold",
+                          "min-h-10 rounded-full px-3 text-xs font-semibold",
                           active
                             ? "bg-brand text-white"
                             : "bg-surface-raised text-ink-soft ring-1 ring-line",

@@ -37,7 +37,7 @@ export function ClerkAuthControls({
           <button
             type="button"
             className={cn(
-              "inline-flex items-center justify-center rounded-xl px-3 py-1.5 text-sm font-semibold transition",
+              "inline-flex min-h-10 items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition",
               "border border-line bg-mist text-brand-deep hover:bg-surface-raised",
               layout === "stack" && "w-full min-h-10",
             )}
@@ -49,7 +49,7 @@ export function ClerkAuthControls({
           <button
             type="button"
             className={cn(
-              "inline-flex items-center justify-center rounded-xl px-3 py-1.5 text-sm font-semibold transition",
+              "inline-flex min-h-10 items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold transition",
               "bg-brand text-white hover:bg-brand-deep",
               layout === "stack" && "w-full min-h-10",
             )}

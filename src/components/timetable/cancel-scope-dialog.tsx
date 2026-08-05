@@ -42,7 +42,7 @@ export function CancelScopeDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-4 sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-0 sm:items-center sm:p-4"
       role="presentation"
       onClick={() => {
         if (!busy) onClose();
@@ -52,7 +52,7 @@ export function CancelScopeDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="cancel-scope-title"
-        className="w-full max-w-md rounded-2xl bg-surface-raised p-5 shadow-xl ring-1 ring-line"
+        className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-surface-raised p-5 shadow-xl ring-1 ring-line safe-area-pb sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2

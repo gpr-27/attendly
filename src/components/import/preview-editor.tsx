@@ -221,7 +221,7 @@ export function PreviewEditor({
                     {Math.round(meta.confidence * 100)}%
                   </span>
                 </div>
-                <div className="grid grid-cols-[5rem_1fr] gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[5rem_1fr]">
                   <input
                     className={cn(
                       "rounded border border-line bg-surface px-2 py-1.5 text-sm font-semibold",

@@ -17,7 +17,7 @@ export function LandingPage() {
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-5 py-10 sm:px-8 lg:px-10 lg:py-16">
         <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(16rem,20rem)] lg:gap-16 xl:gap-20">
           <div className="rise min-w-0">
-            <p className="font-display text-5xl font-semibold tracking-tight text-ink sm:text-6xl lg:text-7xl xl:text-8xl">
+            <p className="font-display text-4xl font-semibold tracking-tight text-ink sm:text-6xl lg:text-7xl xl:text-8xl">
               Attendly
             </p>
             <p className="mt-4 max-w-xl text-lg leading-relaxed text-ink-soft sm:text-xl lg:mt-5 lg:text-2xl lg:leading-snug">

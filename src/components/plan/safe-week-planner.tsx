@@ -207,7 +207,7 @@ export function SafeWeekPlanner() {
               className="rounded-2xl bg-surface-raised p-4 ring-1 ring-line"
               style={{ borderLeft: `4px solid ${row.color}` }}
             >
-              <div className="flex items-baseline justify-between gap-2">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <p className="text-sm font-semibold text-ink">
                   {row.name}{" "}
                   {row.shortCode &&

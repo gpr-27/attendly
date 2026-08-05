@@ -75,7 +75,7 @@ export function AnalyticsPage() {
   }, [focusCtx?.sheetOpen, focusCtx?.focusNonce]);
 
   return (
-    <main className="w-full max-w-3xl px-4 pb-24 pt-6 sm:px-6 lg:px-8">
+    <main className="w-full max-w-3xl px-4 pb-6 pt-6 sm:px-6 md:pb-24 lg:px-8">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <PageHeader
           eyebrow="History"
@@ -169,7 +169,7 @@ export function AnalyticsPage() {
         </div>
       )}
 
-      <AgentFab onClick={() => setAgentOpen(true)} />
+      <AgentFab className="hidden md:inline-flex" onClick={() => setAgentOpen(true)} />
       <AgentSheet
         open={agentOpen}
         onOpenChange={setAgentOpen}

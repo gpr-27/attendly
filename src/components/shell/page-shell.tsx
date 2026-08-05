@@ -43,7 +43,7 @@ export function PageShell({
             <p className="mt-1.5 max-w-xl text-sm text-mute">{description}</p>
           ) : null}
         </div>
-        {actions ? <div className="shrink-0">{actions}</div> : null}
+        {actions ? <div className="flex min-w-0 shrink-0 flex-wrap gap-2">{actions}</div> : null}
       </header>
       {children}
     </main>
