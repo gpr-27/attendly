@@ -52,6 +52,11 @@ Read this anytime to understand **what changed** and **where it lives**.
 
 ## Changelog
 
+### 2026-08-05 — Per-Clerk-user Dexie + Vercel Clerk env fix
+- Production 500 was `Missing publishableKey` — Clerk keys were only in `.env.local`; set on Vercel Production/Preview and redeployed.
+- Each signed-in Clerk user now gets `AttendlyDB_u_<userId>` IndexedDB (no shared attendance across accounts on one browser). Legacy `AttendlyDB` migrates once to the first account that claims it.
+- Files: `src/lib/db/database.ts`, `user-database-provider.tsx`, `app-providers.tsx`, `repository.ts` (`allTables()`).
+
 ### 2026-08-05 — Auth-required app (signed-out landing)
 - **What:** App content now requires Clerk sign-in. `src/proxy.ts` uses `clerkMiddleware` + `createRouteMatcher` (protected-first): public `/`, `/sign-in`, `/sign-up`, `/__clerk`; everything else `auth.protect()` → redirect to landing. Signed-out `/` shows polished Attendly landing (brand, pitch, Sign in/Sign up modals, theme toggle, on-device note) — **no** Today shell/data. Signed-in `/` → `TodayScreen` (then `/onboarding` if Dexie settings not onboarded). App shell only when signed in. Removed optional onboarding auth prompt. Still Dexie-local after login (v1).
 - **Files:** `src/proxy.ts`, `src/app/page.tsx`, `src/components/auth/landing-page.tsx`, `src/app/sign-in/[[...sign-in]]/page.tsx`, `src/app/sign-up/[[...sign-up]]/page.tsx`, `src/components/shell/{app-frame,clerk-auth-controls,side-nav,bottom-nav}.tsx`, `src/components/onboarding/onboarding-intro.tsx`, deleted `auth-prompt.tsx`, `.env.example`, `docs/UI-COMPONENT-MAP.md`, this journal.
