@@ -21,15 +21,17 @@ function newId(): string {
   return crypto.randomUUID()
 }
 
-const ALL_TABLES = [
-  db.settings,
-  db.subjects,
-  db.timetableSeries,
-  db.seriesExceptions,
-  db.calendarBlocks,
-  db.classSessions,
-  db.attendanceRecords,
-] as const
+function allTables() {
+  return [
+    db.settings,
+    db.subjects,
+    db.timetableSeries,
+    db.seriesExceptions,
+    db.calendarBlocks,
+    db.classSessions,
+    db.attendanceRecords,
+  ] as const
+}
 
 // —— Settings ——
 
@@ -408,7 +410,8 @@ export async function sessionIdsWithMarks(
 
 /** Wipe all stores. Stays empty — no re-seed. */
 export async function clearAllData(): Promise<void> {
-  await db.transaction("rw", [...ALL_TABLES], async () => {
-    await Promise.all(ALL_TABLES.map((t) => t.clear()))
+  const tables = allTables()
+  await db.transaction("rw", [...tables], async () => {
+    await Promise.all(tables.map((t) => t.clear()))
   })
 }
