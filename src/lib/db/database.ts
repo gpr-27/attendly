@@ -83,23 +83,25 @@ async function copyAllTables(
 }
 
 /**
- * One-time: move pre-Clerk `AttendlyDB` into the first signed-in user's DB
- * when their DB is empty.
+ * Pull rows from a source DB into `target` when target is empty and source
+ * has subjects. Used for pre-Clerk `AttendlyDB` and the accidental
+ * `AttendlyDB__unbound` bucket (stale import bug).
  */
-async function maybeMigrateLegacy(
-  userId: string,
+async function maybeAdoptSource(
+  sourceName: string,
   target: AttendanceDatabase,
+  claimKey: string,
+  userId: string,
 ): Promise<void> {
   if (typeof window === "undefined") return
-  const claimKey = "attendly.legacyDbClaimedBy"
   const claimed = window.localStorage.getItem(claimKey)
-  if (claimed && claimed !== userId) return
+  if (claimed && claimed !== userId && claimed !== "shared-unbound") return
 
-  const legacy = createAttendanceDatabase(LEGACY_DB_NAME)
+  const source = createAttendanceDatabase(sourceName)
   try {
-    await legacy.open()
-    const legacySubjects = await legacy.subjects.count()
-    if (legacySubjects === 0) return
+    await source.open()
+    const sourceSubjects = await source.subjects.count()
+    if (sourceSubjects === 0) return
 
     await target.open()
     const targetSubjects = await target.subjects.count()
@@ -108,17 +110,61 @@ async function maybeMigrateLegacy(
       return
     }
 
-    await copyAllTables(legacy, target)
+    await copyAllTables(source, target)
     window.localStorage.setItem(claimKey, userId)
+    // Empty the accidental unbound bucket so it cannot shadow later.
+    if (sourceName.endsWith("__unbound")) {
+      await source.transaction(
+        "rw",
+        [
+          source.settings,
+          source.subjects,
+          source.timetableSeries,
+          source.seriesExceptions,
+          source.calendarBlocks,
+          source.classSessions,
+          source.attendanceRecords,
+        ],
+        async () => {
+          await Promise.all([
+            source.settings.clear(),
+            source.subjects.clear(),
+            source.timetableSeries.clear(),
+            source.seriesExceptions.clear(),
+            source.calendarBlocks.clear(),
+            source.classSessions.clear(),
+            source.attendanceRecords.clear(),
+          ])
+        },
+      )
+    }
   } catch {
     /* ignore migrate failures — start empty */
   } finally {
     try {
-      legacy.close()
+      source.close()
     } catch {
       /* ignore */
     }
   }
+}
+
+async function maybeMigrateLegacy(
+  userId: string,
+  target: AttendanceDatabase,
+): Promise<void> {
+  await maybeAdoptSource(
+    LEGACY_DB_NAME,
+    target,
+    "attendly.legacyDbClaimedBy",
+    userId,
+  )
+  await maybeAdoptSource(
+    `${LEGACY_DB_NAME}__unbound`,
+    target,
+    "attendly.unboundDbClaimedBy",
+    userId,
+  )
 }
 
 /**
