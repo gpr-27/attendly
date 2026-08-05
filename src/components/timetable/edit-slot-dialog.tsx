@@ -113,7 +113,7 @@ export function EditSlotDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-4 sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-0 sm:items-center sm:p-4"
       role="presentation"
       onClick={() => {
         if (!busy) onClose();
@@ -123,7 +123,7 @@ export function EditSlotDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-slot-title"
-        className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl bg-surface-raised p-5 shadow-xl ring-1 ring-line"
+        className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-surface-raised p-5 shadow-xl ring-1 ring-line safe-area-pb sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-brand">

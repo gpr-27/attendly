@@ -90,7 +90,7 @@ function RiskMeter({
           title={`Buffer target ${bufferTarget}%`}
         />
       </div>
-      <div className="flex justify-between text-[0.65rem] text-mute">
+      <div className="flex flex-wrap justify-between gap-x-2 gap-y-1 text-[0.65rem] text-mute">
         <span>0%</span>
         <span>Min {collegeTarget}%</span>
         <span>Safe {bufferTarget}%</span>
@@ -539,7 +539,7 @@ export function BunkSimulator() {
                   type="button"
                   onClick={() => setLabMode(id)}
                   className={cn(
-                    "min-h-9 rounded-full px-3 text-xs font-semibold ring-1",
+                    "min-h-10 rounded-full px-3 text-xs font-semibold ring-1",
                     labMode === id
                       ? "bg-ink text-white ring-ink"
                       : "bg-surface-raised text-ink-soft ring-line",
@@ -579,21 +579,21 @@ export function BunkSimulator() {
                         onClick={() =>
                           setExtraSkips((n) => Math.max(0, n - 1))
                         }
-                        className="rounded-full bg-surface-raised px-3 py-1 text-xs font-semibold ring-1 ring-line"
+                        className="min-h-10 rounded-full bg-surface-raised px-3 py-2 text-xs font-semibold ring-1 ring-line"
                       >
                         −1
                       </button>
                       <button
                         type="button"
                         onClick={() => setExtraSkips((n) => n + 1)}
-                        className="rounded-full bg-surface-raised px-3 py-1 text-xs font-semibold ring-1 ring-line"
+                        className="min-h-10 rounded-full bg-surface-raised px-3 py-2 text-xs font-semibold ring-1 ring-line"
                       >
                         +1
                       </button>
                       <button
                         type="button"
                         onClick={applyMaxSafe}
-                        className="rounded-full bg-brand/15 px-3 py-1 text-xs font-semibold text-brand ring-1 ring-brand/30"
+                        className="min-h-10 rounded-full bg-brand/15 px-3 py-2 text-xs font-semibold text-brand ring-1 ring-brand/30"
                       >
                         Max safe ({currentStanding?.standing.canSkipThisTerm ?? 0})
                       </button>
@@ -710,7 +710,7 @@ export function BunkSimulator() {
                   <p className="text-xs font-semibold uppercase tracking-wide text-mute">
                     Now · {base.attended}/{base.total}
                   </p>
-                  <p className="font-display mt-1 text-3xl font-semibold tabular-nums text-ink">
+                  <p className="font-display mt-1 text-2xl font-semibold tabular-nums text-ink sm:text-3xl">
                     {currentStanding.percentage == null
                       ? "—"
                       : `${currentStanding.percentage.toFixed(1)}%`}
@@ -741,7 +741,7 @@ export function BunkSimulator() {
                         ? `If you bunk ${scenarioSkips} more`
                         : "Scenario (no change)"}
                   </p>
-                  <p className="font-display mt-1 text-3xl font-semibold tabular-nums text-ink">
+                  <p className="font-display mt-1 text-2xl font-semibold tabular-nums text-ink sm:text-3xl">
                     {scenario.percentage == null
                       ? "—"
                       : `${scenario.percentage.toFixed(1)}%`}

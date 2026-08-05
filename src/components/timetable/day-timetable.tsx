@@ -368,7 +368,7 @@ function SessionCard({
               <button
                 type="button"
                 disabled={busy}
-                className="min-h-9 rounded-xl px-3 text-xs font-semibold text-risk-danger ring-1 ring-risk-danger/30 disabled:opacity-40"
+                className="min-h-10 rounded-xl px-3 text-xs font-semibold text-risk-danger ring-1 ring-risk-danger/30 disabled:opacity-40"
                 onClick={() => onDeleteCancelled(session)}
               >
                 Delete cancelled
@@ -413,7 +413,7 @@ function ClassActions({
   onRemove?: () => void;
 }) {
   const btn =
-    "min-h-9 shrink-0 rounded-xl px-3 text-xs font-semibold disabled:opacity-40";
+    "min-h-10 shrink-0 rounded-xl px-3 text-xs font-semibold disabled:opacity-40";
 
   return (
     <div className="mt-3 space-y-2">

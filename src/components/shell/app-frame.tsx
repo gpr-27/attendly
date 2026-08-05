@@ -60,7 +60,7 @@ export function AppFrame({ children }: AppFrameProps) {
     <div className="mx-auto flex min-h-dvh w-full max-w-[1200px]">
       <SideNav />
       <div className="relative flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-line/60 bg-surface/90 px-4 py-2.5 backdrop-blur-md md:hidden">
+        <header className="safe-area-pt sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-line/60 bg-surface/90 px-4 py-2.5 backdrop-blur-md md:hidden">
           <Link href="/" className="min-w-0 truncate pr-2">
             <p className="font-display text-lg font-semibold tracking-tight text-ink">
               Attendly
@@ -71,7 +71,7 @@ export function AppFrame({ children }: AppFrameProps) {
             <ThemeToggle className="shrink-0" />
           </div>
         </header>
-        <div className="flex-1 pb-[calc(var(--nav-h)+1.25rem)] md:pb-6">
+        <div className="flex-1 pb-[calc(var(--nav-total-h)+1.25rem)] md:pb-6">
           {children}
         </div>
         <BottomNav />

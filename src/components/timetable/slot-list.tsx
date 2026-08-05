@@ -98,7 +98,7 @@ export function SlotList({
                     <button
                       type="button"
                       disabled={busy}
-                      className="min-h-9 rounded-xl px-3 text-xs font-semibold text-brand ring-1 ring-brand/30 disabled:opacity-40"
+                      className="min-h-10 rounded-xl px-3 text-xs font-semibold text-brand ring-1 ring-brand/30 disabled:opacity-40"
                       onClick={() => onInsight(slot)}
                     >
                       Insights
@@ -108,7 +108,7 @@ export function SlotList({
                     <button
                       type="button"
                       disabled={busy}
-                      className="min-h-9 rounded-xl px-3 text-xs font-semibold text-ink-soft ring-1 ring-line disabled:opacity-40"
+                      className="min-h-10 rounded-xl px-3 text-xs font-semibold text-ink-soft ring-1 ring-line disabled:opacity-40"
                       onClick={() => onEdit(slot)}
                     >
                       Edit permanent
@@ -118,7 +118,7 @@ export function SlotList({
                     <button
                       type="button"
                       disabled={busy}
-                      className="min-h-9 rounded-xl px-3 text-xs font-semibold text-risk-danger ring-1 ring-risk-danger/30 disabled:opacity-40"
+                      className="min-h-10 rounded-xl px-3 text-xs font-semibold text-risk-danger ring-1 ring-risk-danger/30 disabled:opacity-40"
                       onClick={() => onDelete(slot)}
                     >
                       Delete

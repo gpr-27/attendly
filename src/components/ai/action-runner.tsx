@@ -66,7 +66,7 @@ export function ActionRunner({
               type="button"
               disabled={busy}
               onClick={() => onConfirm(action)}
-              className="min-h-9 rounded-full bg-risk-danger px-3.5 text-xs font-semibold text-white disabled:opacity-50"
+              className="min-h-10 rounded-full bg-risk-danger px-3.5 text-xs font-semibold text-white disabled:opacity-50"
             >
               Confirm
             </button>
@@ -75,7 +75,7 @@ export function ActionRunner({
                 type="button"
                 disabled={busy}
                 onClick={() => onDismiss(action)}
-                className="min-h-9 rounded-full border border-line px-3.5 text-xs font-semibold text-ink-soft"
+                className="min-h-10 rounded-full border border-line px-3.5 text-xs font-semibold text-ink-soft"
               >
                 Cancel
               </button>

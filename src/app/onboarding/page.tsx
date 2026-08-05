@@ -59,7 +59,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full max-w-xl flex-col px-4 pb-10 pt-6 sm:px-6">
+    <main className="mx-auto flex min-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-full max-w-xl flex-col px-4 pb-10 pt-6 sm:px-6">
       <OnboardingIntro />
 
       <AiOnboardingTip />
@@ -69,7 +69,7 @@ export default function OnboardingPage() {
           <p className="mb-2 text-sm font-semibold text-ink">
             College minimum
           </p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {CRITERIA.map((pct) => {
               const active = targetPct === pct;
               return (

@@ -113,7 +113,7 @@ export function SubjectReportSheet({
         aria-label="Close subject report"
         onClick={onClose}
       />
-      <div className="absolute inset-x-3 bottom-0 flex max-h-[90dvh] flex-col overflow-hidden rounded-t-2xl border border-line bg-surface shadow-xl sm:inset-x-auto sm:bottom-auto sm:top-[8%] sm:left-1/2 sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:rounded-2xl">
+      <div className="absolute inset-x-0 bottom-0 flex max-h-[92dvh] flex-col overflow-hidden rounded-t-2xl border border-line bg-surface shadow-xl safe-area-pb sm:inset-x-3 sm:bottom-auto sm:top-[8%] sm:left-1/2 sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:rounded-2xl">
         <div className="shrink-0 border-b border-line px-4 pb-3 pt-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
@@ -135,7 +135,7 @@ export function SubjectReportSheet({
               ref={closeRef}
               type="button"
               onClick={onClose}
-              className="shrink-0 rounded-lg p-2 text-mute hover:bg-mist hover:text-ink"
+              className="flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-lg text-mute hover:bg-mist hover:text-ink"
               aria-label="Close"
             >
               <X className="size-4" />
@@ -163,7 +163,7 @@ export function SubjectReportSheet({
               <p className="mt-1.5 text-sm leading-snug text-ink-soft">
                 {report.bunkLine}
               </p>
-              <dl className="mt-3 grid grid-cols-3 gap-2 text-center sm:grid-cols-4">
+              <dl className="mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
                 <SummaryStat label="Present" value={report.summary.present} />
                 <SummaryStat label="Absent" value={report.summary.absent} />
                 <SummaryStat label="OD" value={report.summary.onDuty} />

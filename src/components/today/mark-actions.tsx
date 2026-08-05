@@ -87,7 +87,7 @@ export function MarkActions({
               title={action.label}
               onClick={() => onMark(action.status)}
               className={cn(
-                "inline-flex min-h-9 min-w-[2.5rem] flex-1 items-center justify-center rounded-lg px-2 text-sm font-semibold tabular-nums transition sm:flex-none sm:min-w-[2.75rem]",
+                "inline-flex min-h-11 min-w-[2.75rem] flex-1 items-center justify-center rounded-lg px-2 text-sm font-semibold tabular-nums transition sm:flex-none",
                 selected ? action.selectedClass : action.idleClass,
                 selected && "scale-[1.02] shadow-sm",
                 disabled && "pointer-events-none opacity-50",
@@ -102,7 +102,7 @@ export function MarkActions({
         <button
           type="button"
           onClick={onUndo}
-          className="text-xs font-medium text-mute underline-offset-2 hover:text-ink hover:underline"
+          className="min-h-10 text-xs font-medium text-mute underline-offset-2 hover:text-ink hover:underline"
         >
           Undo mark
         </button>

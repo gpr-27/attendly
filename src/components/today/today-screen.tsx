@@ -24,7 +24,6 @@ import {
 import { useTodayNotifications } from "@/lib/notifications";
 import { AgendaList } from "@/components/today/agenda-list";
 import { AiDock, AiDockTrigger } from "@/components/today/ai-dock";
-import { AgentFab } from "@/components/ai/agent-sheet";
 import { TodayEmptyHub } from "@/components/today/empty-hub";
 import { StandingHero } from "@/components/today/standing-hero";
 import { DayNavigator } from "@/components/calendar/day-navigator";
@@ -323,14 +322,14 @@ export function TodayScreen() {
 
   if (loading || !urlReady) {
     return (
-      <main className="px-4 pb-8 pt-6 sm:px-6 lg:px-8">
+      <main className="px-4 pb-6 pt-6 sm:px-6 lg:px-8">
         <p className="text-sm text-mute">Loading Today…</p>
       </main>
     );
   }
 
   return (
-    <main className="px-4 pb-8 pt-6 sm:px-6 lg:px-8">
+    <main className="px-4 pb-6 pt-6 sm:px-6 lg:px-8">
       <header className="rise mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-brand md:hidden">
@@ -373,7 +372,7 @@ export function TodayScreen() {
           <button
             type="button"
             onClick={() => void handleClearHoliday()}
-            className="mt-2 text-xs font-semibold text-brand hover:underline"
+            className="mt-2 min-h-10 text-xs font-semibold text-brand hover:underline"
           >
             Clear one-day holiday
           </button>
@@ -415,7 +414,7 @@ export function TodayScreen() {
                       <button
                         type="button"
                         onClick={() => setActiveId(item.id)}
-                        className="rounded-full border border-risk-watch/45 bg-surface-raised px-3 py-1 text-xs font-medium text-ink hover:border-risk-watch/70"
+                        className="min-h-10 rounded-full border border-risk-watch/45 bg-surface-raised px-3 py-2 text-xs font-medium text-ink hover:border-risk-watch/70"
                       >
                         {item.subjectName} · {item.startLabel}
                       </button>
@@ -449,7 +448,7 @@ export function TodayScreen() {
                   <button
                     type="button"
                     onClick={() => void handleMarkAllPresent()}
-                    className="rounded-full bg-risk-safe px-3 py-1.5 text-xs font-semibold text-white"
+                    className="min-h-10 rounded-full bg-risk-safe px-3 py-2 text-xs font-semibold text-white"
                   >
                     Mark all present
                   </button>
@@ -494,7 +493,7 @@ export function TodayScreen() {
         </div>
       )}
 
-      <AgentFab onClick={() => setCoachOpen(true)} />
+
       <AiDock
         open={coachOpen}
         onOpenChange={setCoachOpen}

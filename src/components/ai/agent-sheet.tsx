@@ -55,7 +55,8 @@ export function AgentSheet({
         className={cn(
           "absolute inset-0 flex flex-col bg-surface-raised shadow-xl",
           "md:inset-4 md:rounded-2xl md:border md:border-line",
-          "lg:inset-[5vh_max(1rem,calc((100vw-48rem)/2))] lg:max-h-[90dvh]",
+          "max-h-[100dvh] pb-[env(safe-area-inset-bottom,0px)]",
+          "lg:inset-[5vh_max(1rem,calc((100vw-48rem)/2))] lg:max-h-[92dvh]",
         )}
       >
         <AgentControl
@@ -90,7 +91,7 @@ export function AgentFab({
         type="button"
         onClick={onClick}
         className={cn(
-          "inline-flex items-center gap-2 rounded-full border border-brand/25 bg-brand/10 px-3.5 py-2 text-sm font-semibold text-brand transition hover:bg-brand/15",
+          "inline-flex min-h-10 items-center gap-2 rounded-full border border-brand/25 bg-brand/10 px-3.5 py-2 text-sm font-semibold text-brand transition hover:bg-brand/15",
           className,
         )}
       >
@@ -105,8 +106,7 @@ export function AgentFab({
       type="button"
       onClick={onClick}
       className={cn(
-        "fixed z-40 inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-brand-deep",
-        "right-4 bottom-[calc(var(--nav-h)+1rem)] md:bottom-6",
+        "fab-bottom fab-bottom-md-reset fixed right-4 z-40 inline-flex min-h-11 items-center gap-2 rounded-full border border-brand/30 bg-brand px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-brand-deep md:bottom-6",
         className,
       )}
       aria-label="Open Agent"

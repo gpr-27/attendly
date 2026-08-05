@@ -111,7 +111,7 @@ export function ThemeToggle({
             aria-pressed={active}
             onClick={() => void setMode(value)}
             className={cn(
-              "inline-flex size-9 min-h-9 min-w-9 shrink-0 items-center justify-center rounded-full transition disabled:opacity-60",
+              "inline-flex size-10 min-h-10 min-w-10 shrink-0 items-center justify-center rounded-full transition disabled:opacity-60",
               active
                 ? "bg-brand text-white shadow-sm"
                 : "text-ink-soft hover:bg-surface-raised/60 hover:text-ink",

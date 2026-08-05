@@ -5,7 +5,7 @@ import { attendlyClerkAppearance } from "@/lib/clerk-appearance";
 
 export default function SignInPage() {
   return (
-    <main className="flex min-h-dvh flex-col">
+    <main className="safe-area-pt flex min-h-dvh flex-col">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-5 pt-4 sm:px-8 lg:px-10">
         <Link
           href="/"

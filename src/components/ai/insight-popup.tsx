@@ -75,7 +75,7 @@ export function InsightPopup({ className }: InsightPopupProps) {
         aria-label="Close insight"
         onClick={close}
       />
-      <div className="absolute inset-x-3 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-2xl border border-line bg-surface p-4 shadow-xl sm:inset-x-auto sm:bottom-auto sm:top-[16%] sm:left-1/2 sm:w-full sm:max-w-sm sm:-translate-x-1/2 sm:rounded-2xl">
+      <div className="absolute inset-x-0 bottom-0 max-h-[92dvh] overflow-y-auto rounded-t-2xl border border-line bg-surface p-4 shadow-xl safe-area-pb sm:inset-x-auto sm:bottom-auto sm:top-[16%] sm:left-1/2 sm:w-full sm:max-w-sm sm:-translate-x-1/2 sm:rounded-2xl">
         <div className="mb-3 flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-brand">
@@ -95,7 +95,7 @@ export function InsightPopup({ className }: InsightPopupProps) {
             ref={closeRef}
             type="button"
             onClick={close}
-            className="shrink-0 rounded-lg p-2 text-mute hover:bg-mist hover:text-ink"
+            className="flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-lg text-mute hover:bg-mist hover:text-ink"
             aria-label="Close"
           >
             <X className="size-4" />

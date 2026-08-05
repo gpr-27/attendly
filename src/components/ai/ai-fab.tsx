@@ -39,8 +39,7 @@ export function AiFab({ pageKey, className }: AiFabProps) {
         type="button"
         onClick={() => setOpen(true)}
         className={cn(
-          "fixed z-40 inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-brand-deep md:hidden",
-          "right-4 bottom-[calc(var(--nav-h)+1rem)]",
+          "fab-bottom fixed right-4 z-40 inline-flex min-h-11 items-center gap-2 rounded-full border border-brand/30 bg-brand px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-brand-deep md:hidden",
           className,
         )}
         aria-label="Ask AI"
@@ -57,7 +56,7 @@ export function AiFab({ pageKey, className }: AiFabProps) {
             aria-label="Close AI"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-2xl border border-line bg-surface-raised p-3 shadow-xl safe-area-pb sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-[min(24rem,calc(100vw-2rem))] sm:rounded-2xl">
+          <div className="absolute inset-x-0 bottom-0 max-h-[92dvh] overflow-y-auto rounded-t-2xl border border-line bg-surface-raised p-3 shadow-xl safe-area-pb sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-[min(24rem,calc(100vw-2rem))] sm:rounded-2xl">
             <AiAssistantPanel
               pageKey={pageKey}
               compact
