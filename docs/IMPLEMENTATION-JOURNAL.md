@@ -52,6 +52,23 @@ Read this anytime to understand **what changed** and **where it lives**.
 
 ## Changelog
 
+### 2026-08-05 — Supabase cloud DB + Clerk identity + Import → cloud
+- **What:** Attendly attendance data is stored in **Supabase Postgres** (project `wulbivagfngyzreoefwo`, region `ap-south-1`). Dexie is the per-Clerk-user offline cache (`AttendlyDB_u_<userId>`); when online, **cloud is source of truth**.
+- **Clerk ↔ Supabase identity (linked systems, not unrelated):**
+  - **Tenant key:** every cloud row has `clerk_user_id` = Clerk `auth().userId` (same id as Dexie bind).
+  - **v1 authZ path (chosen):** Next.js `/api/sync` uses Clerk session via `auth()` + Supabase **service role** server-side. Client never sends/trusts a userId; spoofed `clerkUserId` in body → 403. RLS enabled with **no** anon/authenticated policies (Data API locked). JWT template / third-party auth RLS (`auth.jwt()->>'sub'`) deferred — service-role + Clerk is the reliable v1 link.
+  - **First sign-in:** `ensureClerkUserProfile(userId)` upserts a default `settings` row for that Clerk user (idempotent) on GET/PUT `/api/sync`.
+  - **Dexie bind:** `UserDatabaseProvider` only runs after Clerk `userId` is present; sync pull/push uses cookie session → API → `auth().userId`.
+- **Schema (mirrors Dexie):** `settings`, `subjects`, `timetable_series`, `series_exceptions`, `calendar_blocks`, `class_sessions`, `attendance_records`.
+- **Sync flow:**
+  1. After `bindDatabaseForUser` → `syncAfterBind()` → GET `/api/sync` (ensure profile + pull). Cloud data → replace Dexie; else local data → push.
+  2. Repository mutations → debounced `scheduleCloudPush()`.
+  3. **Settings → Import schedule JSON:** Dexie `importBackup` + rematerialize → **required** `pushLocalToCloud({ required: true })` for that Clerk user (marks cleared). Failure → `CloudSyncError` shown in UI.
+- **Files:** `src/lib/supabase/{admin,clerk-identity,mappers,sync-server,snapshot,database.types}.ts`, `src/app/api/sync/route.ts`, `src/lib/db/cloud-sync.ts`, `export-import.ts`, `repository.ts`, `user-database-provider.tsx`, `schedule-backup-panel.tsx`, `.env.example`, this journal.
+- **Env (Vercel Production/Preview):** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, plus existing Clerk + `GROQ_API_KEY` / `GEMINI_API_KEY`.
+- **Deps:** `@supabase/supabase-js@2.112.1`.
+- **For user:** Sign in (Clerk) → cloud profile created → import/mark syncs under your Clerk id → other device pulls same data. Live: https://attendly-navy.vercel.app · https://supabase.com/dashboard/project/wulbivagfngyzreoefwo
+
 ### 2026-08-05 — Landing / auth desktop responsive fix + docs
 - **Bug:** Signed-out landing / sign-in looked like a phone UI on laptop — `AppFrame` bare wrapper used `max-w-lg`, plus landing `max-w-md`.
 - **What:** Bare shell is full viewport; landing uses `max-w-6xl` split (brand left, CTAs right on `lg+`; stacked full-width on phone). Sign-in / sign-up centered in wide chrome with larger Clerk card (~28rem). Onboarding keeps a readable `max-w-xl` form column. Clerk appearance: full-width card, taller inputs/buttons, modal max width. README corrected for Clerk-required auth + live URL. Today shell already had desktop grid — no cage change there.
@@ -577,9 +594,14 @@ Read this anytime to understand **what changed** and **where it lives**.
 | Future | `docs/future-improvements.md` | Later ideas (do not build in v1) |
 | Journal | `docs/IMPLEMENTATION-JOURNAL.md` | This file |
 | Types | `src/lib/db/types.ts` | Domain types (string UUID ids); empty `defaultSettings()` |
-| Dexie schema | `src/lib/db/database.ts` | `AttendlyDB` — 7 stores; **no populate/seed** |
-| Repository | `src/lib/db/repository.ts` | CRUD for all stores |
-| Schedule backup | `src/lib/db/export-import.ts` + Settings panel | Structure JSON (no marks); rematerialize on import |
+| Dexie schema | `src/lib/db/database.ts` | Per-user `AttendlyDB_u_<clerkId>` — 7 stores; offline cache |
+| Cloud sync | `src/lib/db/cloud-sync.ts` | Client pull/push; `syncAfterBind`; required push for import |
+| Supabase admin | `src/lib/supabase/admin.ts` | Service-role client (server only) |
+| Supabase mappers | `src/lib/supabase/mappers.ts` | camelCase Dexie ↔ snake_case Postgres |
+| Supabase sync | `src/lib/supabase/sync-server.ts` | `pullCloudSnapshot` / `pushCloudSnapshot` by `clerk_user_id` |
+| Sync API | `src/app/api/sync/route.ts` | `GET` pull / `PUT` push; Clerk `auth()` + service role |
+| Repository | `src/lib/db/repository.ts` | CRUD + debounced cloud push after writes |
+| Schedule backup | `src/lib/db/export-import.ts` + Settings panel | Structure JSON (no marks); import → Dexie **then required Supabase push** |
 | Palette | `src/lib/db/subject-palette.ts` | Fixed subject colors |
 | Materializer | `src/lib/timetable/materialize-sessions.ts` | Series → sessions; weekParity; cancel/modify/extra/makeup |
 | Holiday day | `src/lib/timetable/holiday-day.ts` | One-day `calendarBlocks` blackout + rematerialize |
@@ -629,7 +651,7 @@ Read this anytime to understand **what changed** and **where it lives**.
 | Plan UI | `src/app/plan/`, `src/components/plan/` | Bunk sim, safe-week, semester projection |
 | Calendar blocks UI | `src/components/settings/calendar-blocks-editor.tsx` | Exam week / holiday ranges (Settings + Plan) |
 | Pages | `src/app/**/page.tsx` | Route entry points |
-| Env | `.env.example` | `GEMINI_API_KEY`, `GEMINI_MODEL`, `GROQ_API_KEY`, `GROQ_MODEL`, `GROQ_FALLBACK_MODEL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` |
+| Env | `.env.example` | Clerk + AI + `NEXT_PUBLIC_SUPABASE_URL` / `ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` |
 | Tests | `test/` | Vitest: unit / integration / mocked AI; `E2E-CHECKLIST.md` |
 
 ---
@@ -637,27 +659,53 @@ Read this anytime to understand **what changed** and **where it lives**.
 ## Architecture snapshot
 
 ```
-Attendly PWA (personal; Clerk sign-in required for app)
+Attendly PWA (Clerk sign-in required for app)
   Clerk: ClerkProvider + proxy.ts protect (landing public; app routes auth)
-  Dexie AttendlyDB (empty until user/AI adds data)
-    ← Today / Timetable / Subjects / Calendar / Analytics / Plan / Import / Settings
-  materializeSessions: series (± weekParity) + exceptions − calendarBlocks → classSessions
-  Rules engine (src/lib/attendance) owns all % numbers (+ projection / safe-week / component targets)
-  Analytics (src/lib/analytics): streaks + weekday patterns from Dexie marks only
-  Summary PDF (print-report / attendance-report*): attendance marks out → print/Save as PDF
-  Schedule backup (export-import + Settings panel): structure JSON for friends/devices — **no marks**
-  Local notifications (src/lib/notifications): schedule from today’s sessions; prefs in settings
-  Deep link `/?action=mark-next` + PWA manifest shortcuts
-  POST /api/ai/parse-timetable → Gemini vision (+ model/retry; Groq vision fallback) → preview (diff|replace + confidence) → Dexie
-  POST /api/ai/parse-timetable-text → Gemini/Groq for PDF/messy text; client CSV/Excel (SheetJS) → same preview
-  .ics one-way calendar export from classSessions (no OAuth)
-  POST /api/ai/coach → Groq chat/digest/plan (stats-grounded; optional compound policy)
-  GET /api/ai/status → key configured flags (no secrets)
+  Identity: clerk_user_id scopes all cloud rows + Dexie DB name
+
+  Cloud (source of truth when online)
+    Supabase Postgres project attendly (wulbivagfngyzreoefwo, ap-south-1)
+      tables: settings | subjects | timetable_series | series_exceptions
+              calendar_blocks | class_sessions | attendance_records
+      RLS on; no anon/authenticated policies
+      Server: service role via getSupabaseAdmin() — never in browser
+
+  Offline cache
+    Dexie AttendlyDB_u_<clerkUserId> (7 stores mirroring cloud)
+
+  Sync
+    UserDatabaseProvider → bindDatabaseForUser → syncAfterBind
+      cloud has data → writeLocalSnapshot (pull)
+      else local has data → pushLocalToCloud
+    repository mutations → scheduleCloudPush (debounced)
+    Settings Import schedule JSON → importBackup → Dexie + rematerialize
+      → pushLocalToCloud({ required: true })  // Import → cloud (throws on fail)
+    GET /api/sync  ← pull   (auth().userId)
+    PUT /api/sync  → push   (auth().userId + full CloudSnapshot)
+
+  UI / domain (unchanged consumers of Dexie)
+    Today / Timetable / Subjects / Calendar / Analytics / Plan / Import / Settings
+    materializeSessions → classSessions
+    Rules engine (src/lib/attendance)
+    Schedule backup JSON = portable structure (no marks); cloud sync is separate path
+    POST /api/ai/* → Groq/Gemini; GET /api/ai/status
 ```
 
-- **Storage:** Dexie for attendance data — no Postgres/Mongo/Redis; **no demo seed**. Clerk required for UX gate (identity); marks still on-device for v1.
-- **Host:** Vercel serves app + serverless AI Route Handlers (`src/app/api/ai/*`, `runtime = "nodejs"`); keys from `process.env` only; attendance rows stay on-device
-- **Deploy readiness (2026-08-05):** READY WITH CAVEATS — see Changelog entry above
+### Cloud DB architecture (detail)
+
+| Concern | Choice |
+|--------|--------|
+| Host | Supabase Postgres (`https://wulbivagfngyzreoefwo.supabase.co`) |
+| Tenant key | `clerk_user_id` on every table (composite PK with row `id` except settings PK = user) |
+| AuthZ | Clerk on Next.js API; service role bypasses RLS; filter every query by `userId` |
+| Client keys | `NEXT_PUBLIC_SUPABASE_URL` + anon key only (optional); **service role server-only** |
+| Conflict | Full-snapshot replace per user on push (v1 — last writer wins) |
+| Import path | Dexie write → required Supabase push of schedule+settings+sessions (marks cleared) |
+| Offline | Dexie continues to work; next successful bind/push reconciles |
+
+- **Storage:** Supabase Postgres (cloud) + Dexie (cache). **No demo seed.**
+- **Host:** Vercel — app + `/api/sync` + AI routes (`runtime = "nodejs"`); secrets from `process.env`.
+- **Live:** https://attendly-navy.vercel.app · GitHub `gpr-27/attendly`
 
 ---
 
@@ -672,7 +720,7 @@ npm run test:integration
 npm run test:api      # mocked Gemini/Groq routes
 ```
 
-Env: `.env.local` with `GROQ_API_KEY`, `GEMINI_API_KEY`, Clerk keys + `NEXT_PUBLIC_CLERK_SIGN_IN_URL` / `SIGN_UP_URL` / fallback redirects (gitignored). See `.env.example`. Never overwrite `.env.local` secrets. Manual UI checks: `test/E2E-CHECKLIST.md`.
+Env: `.env.local` with `GROQ_API_KEY`, `GEMINI_API_KEY`, Clerk keys, Supabase URL/anon/service-role, and Clerk redirect URLs (gitignored). See `.env.example`. Never overwrite `.env.local` secrets. Manual UI checks: `test/E2E-CHECKLIST.md`.
 
 ## 2026-08-05 — Push & Vercel production deploy
 
@@ -680,4 +728,4 @@ Env: `.env.local` with `GROQ_API_KEY`, `GEMINI_API_KEY`, Clerk keys + `NEXT_PUBL
 - Vercel project **attendly** created under team `praneethg1830-7293s-projects`, GitHub repo connected.
 - Production live: https://attendly-navy.vercel.app
 - Dashboard: https://vercel.com/praneethg1830-7293s-projects/attendly
-- Set in Vercel Project → Settings → Environment Variables (Production + Preview): `GROQ_API_KEY`, `GEMINI_API_KEY` (optional: `GROQ_MODEL`, `GROQ_FALLBACK_MODEL`). Redeploy after adding keys.
+- Env (Production + Preview): AI keys, Clerk keys, and Supabase `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. Redeploy after adding keys.

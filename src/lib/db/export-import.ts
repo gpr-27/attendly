@@ -1,3 +1,4 @@
+import { pushLocalToCloud } from "./cloud-sync"
 import { db, getBoundUserId } from "./database"
 import { clearAllData } from "./repository"
 import {
@@ -239,6 +240,13 @@ export async function importBackup(
   if (shouldRematerialize) {
     await rematerializeBestEffort()
   }
+
+  /**
+   * Required cloud write: full schedule + settings (+ rematerialized sessions;
+   * attendance empty/cleared) for this clerk_user_id. Throws CloudSyncError
+   * if Supabase push fails so the Settings UI can show a clear message.
+   */
+  await pushLocalToCloud({ required: true })
 }
 
 export async function importBackupJson(

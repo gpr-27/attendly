@@ -18,6 +18,15 @@ export {
 export type { AttendanceDatabase } from "./database"
 export * from "./repository"
 export {
+  syncAfterBind,
+  scheduleCloudPush,
+  flushCloudPush,
+  pushLocalToCloud,
+  readLocalSnapshot,
+  writeLocalSnapshot,
+  CloudSyncError,
+} from "./cloud-sync"
+export {
   exportBackup,
   exportBackupJson,
   exportAll,

@@ -45,9 +45,10 @@ export function ScheduleBackupPanel() {
       const payload = parseBackupJson(raw);
 
       const ok = window.confirm(
-        "Replace schedule & settings on this device?\n\n" +
-          "Subjects, timetable, exceptions, calendar blocks, and settings will be replaced. " +
-          "All attendance marks on this device will be cleared. This cannot be undone.",
+        "Replace schedule & settings on this account?\n\n" +
+          "Subjects, timetable, exceptions, calendar blocks, and settings will be replaced " +
+          "on this device and synced to the cloud. " +
+          "All attendance marks will be cleared. This cannot be undone.",
       );
       if (!ok) {
         setMessage("Import cancelled.");
@@ -55,7 +56,7 @@ export function ScheduleBackupPanel() {
       }
 
       await importBackup(payload);
-      setMessage("Schedule imported — reloading…");
+      setMessage("Schedule imported and saved to the cloud — reloading…");
       window.location.reload();
     } catch (err) {
       setError(
@@ -78,9 +79,10 @@ export function ScheduleBackupPanel() {
         Move timetable, subjects, semester range, period slots, exceptions, and
         calendar blocks between browsers or friends.{" "}
         <span className="font-medium text-ink">Attendance marks are not included</span>{" "}
-        — the importer gets a clean slate for present/absent. Works fully
-        offline (Dexie dump). Later with login/cloud DB, the same file still
-        works as a portable backup between accounts; cloud sync is separate.
+        — import clears present/absent. After import, Attendly{" "}
+        <span className="font-medium text-ink">saves the schedule to your cloud account</span>{" "}
+        (Supabase) so other devices see it after sign-in. If cloud save fails,
+        you’ll see an error (local Dexie may still hold the import until you retry).
       </p>
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
@@ -113,8 +115,9 @@ export function ScheduleBackupPanel() {
       </div>
 
       <p className="mt-3 text-xs text-mute">
-        Import replaces structure on this device and clears marks. For a printed
-        attendance summary with marks, use Download attendance PDF above.
+        Import replaces structure, clears marks, and pushes to the cloud for your
+        signed-in account. For a printed attendance summary with marks, use
+        Download attendance PDF above.
       </p>
 
       {message ? (
