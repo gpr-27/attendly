@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ClerkAuthControls } from "@/components/shell/clerk-auth-controls";
 import { NAV_ITEMS, isNavActive } from "@/components/shell/nav-config";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
 import { cn } from "@/lib/utils/cn";
@@ -54,10 +55,13 @@ export function SideNav() {
           })}
         </nav>
 
-        <p className="mt-auto px-2 text-[0.65rem] leading-relaxed text-mute">
-          Data stays on this device. Download an attendance PDF from Settings
-          (or Analytics / Today) before clearing browser storage.
-        </p>
+        <div className="mt-auto space-y-3 px-2">
+          <ClerkAuthControls layout="stack" />
+          <p className="text-[0.65rem] leading-relaxed text-mute">
+            Data stays on this device. Download an attendance PDF from Settings
+            (or Analytics / Today) before clearing browser storage.
+          </p>
+        </div>
       </div>
     </aside>
   );

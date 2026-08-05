@@ -52,6 +52,13 @@ Read this anytime to understand **what changed** and **where it lives**.
 
 ## Changelog
 
+### 2026-08-05 — Clerk auth (optional sign-in)
+- **What:** Added `@clerk/nextjs` with modern App Router APIs. `src/proxy.ts` runs `clerkMiddleware()` (Next 16 filename; open by default so Dexie-local browsing still works unsigned). `ClerkProvider` wraps the app inside `<body>`. Shell chrome shows `<Show>` + SignIn/SignUp/UserButton (no SignedIn/SignedOut).
+- **Files:** `src/proxy.ts`, `src/app/layout.tsx`, `src/components/shell/clerk-auth-controls.tsx`, `app-frame.tsx`, `side-nav.tsx`, `.env.example`, this journal.
+- **Env:** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` in `.env.local` (not committed). Copy from Clerk Dashboard API keys.
+- **Verify:** `npm run build`.
+- **For user:** Add keys → `npm run dev` → Sign up → UserButton in header/sidebar.
+
 ### 2026-08-05 — Vercel deploy readiness check
 - **Verdict:** **READY WITH CAVEATS** — `npm run test` (170) + `npm run build` pass; standard Next App Router (no `output: export`); AI routes `runtime = "nodejs"`; Dexie is client-only; secrets gitignored; no broken imports from deleted `week-preview` / share-code.
 - **Env for Vercel:** `GROQ_API_KEY`, `GEMINI_API_KEY` (optional: `GEMINI_MODEL`, `GROQ_MODEL`, `GROQ_FALLBACK_MODEL`). App runs without keys; AI returns 503 + setup hint.
@@ -567,7 +574,9 @@ Read this anytime to understand **what changed** and **where it lives**.
 | Text parse API | `src/app/api/ai/parse-timetable-text/route.ts` | `POST` plain text/PDF extract → subjects/slots |
 | Coach API | `src/app/api/ai/coach/route.ts` | `POST /api/ai/coach` |
 | AI status API | `src/app/api/ai/status/route.ts` | `GET /api/ai/status` |
-| Shell | `src/components/shell/`, `src/app/layout.tsx`, `src/app/globals.css` | Responsive frame: side nav `md+`, bottom nav mobile, theme toggle, AI FAB |
+| Shell | `src/components/shell/`, `src/app/layout.tsx`, `src/app/globals.css` | Responsive frame: side nav `md+`, bottom nav mobile, theme toggle, Clerk auth controls, AI FAB |
+| Clerk proxy | `src/proxy.ts` | `clerkMiddleware()` (Next 16); matcher includes `/__clerk/:path*`; routes public by default |
+| Clerk UI | `src/components/shell/clerk-auth-controls.tsx` | `<Show>` + SignInButton / SignUpButton / UserButton in shell |
 | Shared AI | `src/components/ai/`, `src/hooks/use-coach-chat.ts`, `src/lib/ai/page-ai-config.ts` | Panel / FAB / page cards + pageContext |
 | Day agenda | `src/lib/dates.ts`, `src/lib/today/load-day-agenda.ts`, `day-navigator`, `day-agenda` | Any-day class list + marks |
 | Shared UI | `src/components/ui/` | Button, card, empty-hub, page-header, pct-ring re-export |
@@ -589,7 +598,7 @@ Read this anytime to understand **what changed** and **where it lives**.
 | Plan UI | `src/app/plan/`, `src/components/plan/` | Bunk sim, safe-week, semester projection |
 | Calendar blocks UI | `src/components/settings/calendar-blocks-editor.tsx` | Exam week / holiday ranges (Settings + Plan) |
 | Pages | `src/app/**/page.tsx` | Route entry points |
-| Env | `.env.example` | `GEMINI_API_KEY`, `GEMINI_MODEL`, `GROQ_API_KEY`, `GROQ_MODEL`, `GROQ_FALLBACK_MODEL` |
+| Env | `.env.example` | `GEMINI_API_KEY`, `GEMINI_MODEL`, `GROQ_API_KEY`, `GROQ_MODEL`, `GROQ_FALLBACK_MODEL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` |
 | Tests | `test/` | Vitest: unit / integration / mocked AI; `E2E-CHECKLIST.md` |
 
 ---
@@ -597,7 +606,8 @@ Read this anytime to understand **what changed** and **where it lives**.
 ## Architecture snapshot
 
 ```
-Attendly PWA (personal, no login)
+Attendly PWA (personal; optional Clerk sign-in)
+  Clerk: ClerkProvider + proxy.ts clerkMiddleware (routes public; auth UI in shell)
   Dexie AttendlyDB (empty until user/AI adds data)
     ← Today / Timetable / Subjects / Calendar / Analytics / Plan / Import / Settings
   materializeSessions: series (± weekParity) + exceptions − calendarBlocks → classSessions
@@ -614,7 +624,7 @@ Attendly PWA (personal, no login)
   GET /api/ai/status → key configured flags (no secrets)
 ```
 
-- **Storage:** Dexie only — no Clerk, Postgres, Mongo, Redis; **no demo seed**
+- **Storage:** Dexie for attendance data — no Postgres/Mongo/Redis; **no demo seed**. Clerk optional (identity only; marks still on-device for v1).
 - **Host:** Vercel serves app + serverless AI Route Handlers (`src/app/api/ai/*`, `runtime = "nodejs"`); keys from `process.env` only; attendance rows stay on-device
 - **Deploy readiness (2026-08-05):** READY WITH CAVEATS — see Changelog entry above
 
@@ -631,7 +641,7 @@ npm run test:integration
 npm run test:api      # mocked Gemini/Groq routes
 ```
 
-Env: `.env.local` with `GROQ_API_KEY` and `GEMINI_API_KEY` (gitignored). See `.env.example`. Never overwrite `.env.local` secrets. Manual UI checks: `test/E2E-CHECKLIST.md`.
+Env: `.env.local` with `GROQ_API_KEY`, `GEMINI_API_KEY`, and Clerk keys `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` (gitignored). See `.env.example`. Never overwrite `.env.local` secrets. Manual UI checks: `test/E2E-CHECKLIST.md`.
 
 ## 2026-08-05 — Push & Vercel production deploy
 

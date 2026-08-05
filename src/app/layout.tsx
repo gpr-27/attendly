@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { ClerkProvider } from "@clerk/nextjs";
 import { DM_Sans, Fraunces } from "next/font/google";
 import { AppFrame } from "@/components/shell/app-frame";
 import { AppProviders } from "@/components/shell/app-providers";
@@ -45,9 +46,11 @@ export default function RootLayout({
       className={`${dmSans.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col font-sans text-ink">
-        <AppProviders>
-          <AppFrame>{children}</AppFrame>
-        </AppProviders>
+        <ClerkProvider>
+          <AppProviders>
+            <AppFrame>{children}</AppFrame>
+          </AppProviders>
+        </ClerkProvider>
       </body>
     </html>
   );
