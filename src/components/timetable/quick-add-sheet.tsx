@@ -10,7 +10,6 @@ import {
   type ClassMutationScope,
 } from "@/components/timetable/mutation-scope-radios";
 import { PeriodSlotChips } from "@/components/timetable/period-slot-chips";
-import { usePeriodOccupancy } from "@/components/timetable/use-period-occupancy";
 import { cn } from "@/lib/cn";
 
 const DAY_OPTIONS = [
@@ -31,7 +30,8 @@ const PARITY_OPTIONS: { value: WeekParity; label: string }[] = [
 
 export type QuickAddPayload = {
   subjectId: string;
-  dayOfWeek: number;
+  /** One day for this-date adds; one or more for every-week adds. */
+  daysOfWeek: number[];
   startTime: string;
   endTime: string;
   location?: string;
@@ -73,7 +73,7 @@ export function QuickAddSheet({
   onSaveSlot,
 }: QuickAddSheetProps) {
   const [subjectId, setSubjectId] = useState("");
-  const [dayOfWeek, setDayOfWeek] = useState(defaultDay);
+  const [selectedDays, setSelectedDays] = useState<number[]>([defaultDay]);
   const [periodSlots, setPeriodSlots] = useState<PeriodSlot[]>(
     defaultPeriodSlots(),
   );
@@ -84,11 +84,14 @@ export function QuickAddSheet({
   const [date, setDate] = useState(defaultDate ?? todayYmd());
   const [showNewSubject, setShowNewSubject] = useState(subjects.length === 0);
   const [localError, setLocalError] = useState<string | null>(null);
-  const [probeDate, setProbeDate] = useState<string | null>(null);
+  const [probeDates, setProbeDates] = useState<string[]>([]);
+  const [occupancy, setOccupancy] = useState<
+    import("@/lib/timetable/slot-overlap").PeriodSlotOccupancy[] | null
+  >(null);
 
   useEffect(() => {
     if (!open) return;
-    setDayOfWeek(defaultDay);
+    setSelectedDays([defaultDay]);
     setShowNewSubject(subjects.length === 0);
     setLocalError(null);
     setWeekParity("all");
@@ -119,31 +122,74 @@ export function QuickAddSheet({
 
   useEffect(() => {
     if (!open) {
-      setProbeDate(null);
+      setProbeDates([]);
       return;
     }
     let cancelled = false;
     void (async () => {
       if (scope === "this_date") {
-        if (!cancelled) setProbeDate(date);
+        if (!cancelled) setProbeDates(date ? [date] : []);
         return;
       }
       const { probeDateForWeekday } = await import(
         "@/lib/timetable/slot-overlap"
       );
-      const ymd = await probeDateForWeekday(dayOfWeek);
-      if (!cancelled) setProbeDate(ymd);
+      const dates = await Promise.all(
+        selectedDays.map((dow) => probeDateForWeekday(dow)),
+      );
+      if (!cancelled) setProbeDates(dates);
     })();
     return () => {
       cancelled = true;
     };
-  }, [open, scope, date, dayOfWeek]);
+  }, [open, scope, date, selectedDays]);
 
-  const occupancy = usePeriodOccupancy({
-    enabled: open,
-    date: probeDate,
-    slots: periodSlots,
-  });
+  useEffect(() => {
+    if (!open || probeDates.length === 0 || periodSlots.length === 0) {
+      setOccupancy(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { getPeriodSlotsOccupancy } = await import(
+          "@/lib/timetable/slot-overlap"
+        );
+        const perDay = await Promise.all(
+          probeDates.map((probeDate) =>
+            getPeriodSlotsOccupancy({ date: probeDate, slots: periodSlots }),
+          ),
+        );
+        const merged = periodSlots.map((_, index) => {
+          const rows = perDay.map((dayRows) => dayRows[index]).filter(Boolean);
+          const takenRows = rows.filter((row) => row.taken);
+          const taken = takenRows.length > 0;
+          const occupants = takenRows.flatMap((row) => row.occupants);
+          const takenLabel = taken
+            ? takenRows.length > 1
+              ? `Taken · ${takenRows.length} days`
+              : (takenRows[0]?.takenLabel ?? "Taken")
+            : null;
+          const tooltip = taken
+            ? takenRows.map((row) => row.tooltip).join("\n")
+            : "Free";
+          return {
+            index,
+            taken,
+            occupants,
+            takenLabel,
+            tooltip,
+          };
+        });
+        if (!cancelled) setOccupancy(merged);
+      } catch {
+        if (!cancelled) setOccupancy(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, probeDates, periodSlots]);
 
   useEffect(() => {
     if (!occupancy || slotIndex == null) return;
@@ -224,6 +270,10 @@ export function QuickAddSheet({
                 setLocalError("Pick a period slot.");
                 return;
               }
+              if (scope === "entire_pattern" && selectedDays.length === 0) {
+                setLocalError("Pick at least one day.");
+                return;
+              }
               setLocalError(null);
               void (async () => {
                 if (scope === "this_date") {
@@ -240,7 +290,6 @@ export function QuickAddSheet({
                     return;
                   }
                 } else {
-                  // Weekly: check next occurrence of this weekday in semester window
                   const { getSettings } = await import("@/lib/db");
                   const { addDaysYmd, dayOfWeekFromYmd, todayYmd: today } =
                     await import("@/lib/dates");
@@ -251,26 +300,39 @@ export function QuickAddSheet({
                   let probe =
                     settings.semesterStart?.trim() || today();
                   if (probe < today()) probe = today();
-                  for (let i = 0; i < 14; i += 1) {
-                    const ymd = addDaysYmd(probe, i);
-                    if (dayOfWeekFromYmd(ymd) !== dayOfWeek) continue;
-                    const overlap = await findDaySlotOverlaps({
-                      date: ymd,
-                      startTime: selected.startTime,
-                      endTime: selected.endTime,
-                    });
-                    if (!overlap.ok) {
+                  const dayLabel = (dow: number) =>
+                    DAY_OPTIONS.find((d) => d.day === dow)?.label ?? "Day";
+                  for (const dayOfWeek of selectedDays) {
+                    let checked = false;
+                    for (let i = 0; i < 14; i += 1) {
+                      const ymd = addDaysYmd(probe, i);
+                      if (dayOfWeekFromYmd(ymd) !== dayOfWeek) continue;
+                      const overlap = await findDaySlotOverlaps({
+                        date: ymd,
+                        startTime: selected.startTime,
+                        endTime: selected.endTime,
+                      });
+                      if (!overlap.ok) {
+                        setLocalError(
+                          `${overlap.message} (${dayLabel(dayOfWeek)}, ${ymd}).`,
+                        );
+                        return;
+                      }
+                      checked = true;
+                      break;
+                    }
+                    if (!checked) {
                       setLocalError(
-                        `${overlap.message} (on ${ymd} — same period as an existing class).`,
+                        `Could not find a ${dayLabel(dayOfWeek)} in the next two weeks to check.`,
                       );
                       return;
                     }
-                    break;
                   }
                 }
                 await onSaveSlot({
                   subjectId,
-                  dayOfWeek,
+                  daysOfWeek:
+                    scope === "entire_pattern" ? selectedDays : [],
                   startTime: selected.startTime,
                   endTime: selected.endTime,
                   location: location.trim() || undefined,
@@ -347,15 +409,32 @@ export function QuickAddSheet({
 
             {scope === "entire_pattern" ? (
               <div>
-                <p className="mb-2 text-xs font-medium text-mute">Day</p>
+                <p className="mb-2 text-xs font-medium text-mute">
+                  Days{" "}
+                  <span className="font-normal text-mute/80">
+                    (tap to select multiple)
+                  </span>
+                </p>
                 <div className="flex flex-wrap gap-1.5">
                   {DAY_OPTIONS.map((d) => {
-                    const active = dayOfWeek === d.day;
+                    const active = selectedDays.includes(d.day);
                     return (
                       <button
                         key={d.day}
                         type="button"
-                        onClick={() => setDayOfWeek(d.day)}
+                        aria-pressed={active}
+                        onClick={() => {
+                          setSelectedDays((prev) => {
+                            const has = prev.includes(d.day);
+                            if (has && prev.length === 1) return prev;
+                            if (has) return prev.filter((x) => x !== d.day);
+                            return [...prev, d.day].sort(
+                              (a, b) =>
+                                DAY_OPTIONS.findIndex((o) => o.day === a) -
+                                DAY_OPTIONS.findIndex((o) => o.day === b),
+                            );
+                          });
+                        }}
                         className={cn(
                           "min-h-11 min-w-11 rounded-full px-3 text-sm font-semibold",
                           active
@@ -435,7 +514,9 @@ export function QuickAddSheet({
                 ? "Saving…"
                 : scope === "this_date"
                   ? "Add this date only"
-                  : "Add every week"}
+                  : selectedDays.length > 1
+                    ? `Add every week (${selectedDays.length} days)`
+                    : "Add every week"}
             </button>
           </form>
         )}
