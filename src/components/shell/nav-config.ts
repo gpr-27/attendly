@@ -8,6 +8,7 @@ import {
   Map,
   Settings,
   Upload,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -26,6 +27,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/subjects", label: "Subjects", icon: BookOpen, primary: true },
   { href: "/calendar", label: "Calendar", icon: CalendarRange },
   { href: "/analytics", label: "Analytics", icon: ChartColumn },
+  { href: "/groups", label: "Groups", icon: Users },
   { href: "/import", label: "Import", icon: Upload },
   { href: "/insights", label: "Coach", icon: Lightbulb, primary: true },
   { href: "/plan", label: "Plan", icon: Map },

@@ -10,7 +10,7 @@ import { ThemeToggle } from "@/components/shell/theme-toggle";
 export function LandingPage() {
   return (
     <main className="relative flex min-h-dvh flex-col overflow-hidden">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-end px-5 pt-4 sm:px-8 lg:px-10">
+      <div className="safe-area-pt mx-auto flex w-full max-w-6xl items-center justify-end px-5 pt-4 sm:px-8 lg:px-10">
         <ThemeToggle />
       </div>
 

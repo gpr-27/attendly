@@ -205,6 +205,9 @@ Prefer small, reusable pieces under `src/components/ui/` (or `src/components/sha
 | `/analytics` | `src/app/analytics/page.tsx` | `analytics-page`, streak-cards, pattern-cards, print-report |
 | `/plan` | `src/app/plan/page.tsx` | `plan-page`, bunk-simulator, safe-week-planner, semester-projection, calendar-blocks-editor |
 | `/plan/safe-week` | `src/app/plan/safe-week/page.tsx` | `safe-week-page` / planner |
+| `/groups` | `src/app/groups/page.tsx` | `groups-page`, `group-card`, search + create CTA |
+| `/groups/new` | `src/app/groups/new/page.tsx` | `new-group-page` |
+| `/groups/[id]` | `src/app/groups/[id]/page.tsx` | `group-detail-page`, `group-chat` (join/leave + polled chat) |
 | `/settings` | `src/app/settings/page.tsx` | Criteria, working days, Notifications, backup |
 
 Signed-in app routes sit inside `AppFrame` shell. Bare: landing (signed out), onboarding, sign-in, sign-up.
@@ -221,7 +224,7 @@ Signed-in app routes sit inside `AppFrame` shell. Bare: landing (signed out), on
 - [x] Shared `ui/*` primitives (`button`, `card`, `empty-hub`, optional `page-header`)
 - [x] Journal changelog when redesign lands; keep this map updated if paths change
 
-**Also shipped:** `standing-hero.tsx` (big % ring for Today), `nav-config.ts`, `lib/ai/build-coach-stats.ts`, `shell/page-shell.tsx`.
+**Also shipped:** `standing-hero.tsx` (big % ring for Today), `nav-config.ts`, `lib/ai/build-coach-stats.ts`, `shell/page-shell.tsx`, **Groups** (`src/components/groups/*`, Supabase-backed chat).
 
 ---
 

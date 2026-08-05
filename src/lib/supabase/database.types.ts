@@ -148,6 +148,87 @@ export type Database = {
           Database["public"]["Tables"]["attendance_records"]["Row"]
         >;
       };
+      groups: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          description: string;
+          institution: string | null;
+          created_by: string;
+          is_public: boolean;
+          member_count: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          description?: string;
+          institution?: string | null;
+          created_by: string;
+          is_public?: boolean;
+          member_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          slug?: string;
+          description?: string;
+          institution?: string | null;
+          created_by?: string;
+          is_public?: boolean;
+          member_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      group_members: {
+        Row: {
+          group_id: string;
+          clerk_user_id: string;
+          role: string;
+          joined_at: string;
+        };
+        Insert: {
+          group_id: string;
+          clerk_user_id: string;
+          role?: string;
+          joined_at?: string;
+        };
+        Update: {
+          group_id?: string;
+          clerk_user_id?: string;
+          role?: string;
+          joined_at?: string;
+        };
+      };
+      group_messages: {
+        Row: {
+          id: string;
+          group_id: string;
+          clerk_user_id: string;
+          body: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          group_id: string;
+          clerk_user_id: string;
+          body: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          group_id?: string;
+          clerk_user_id?: string;
+          body?: string;
+          created_at?: string;
+        };
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
