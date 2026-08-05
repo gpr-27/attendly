@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { InsightPopup } from "@/components/ai/insight-popup";
 import { useAiFocusOptional } from "@/components/ai/ai-focus-context";
 import { BottomNav } from "@/components/shell/bottom-nav";
+import { ClerkAuthControls } from "@/components/shell/clerk-auth-controls";
 import { SideNav } from "@/components/shell/side-nav";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
 type AppFrameProps = {
@@ -25,7 +26,8 @@ export function AppFrame({ children }: AppFrameProps) {
   if (bare) {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col">
-        <div className="flex items-center justify-end px-4 pt-3">
+        <div className="flex items-center justify-end gap-2 px-4 pt-3">
+          <ClerkAuthControls />
           <ThemeToggle />
         </div>
         <div className="flex-1">{children}</div>
@@ -43,7 +45,10 @@ export function AppFrame({ children }: AppFrameProps) {
               Attendly
             </p>
           </Link>
-          <ThemeToggle className="shrink-0" />
+          <div className="flex shrink-0 items-center gap-2">
+            <ClerkAuthControls />
+            <ThemeToggle className="shrink-0" />
+          </div>
         </header>
         <div className="flex-1 pb-[calc(var(--nav-h)+1.25rem)] md:pb-6">
           {children}
