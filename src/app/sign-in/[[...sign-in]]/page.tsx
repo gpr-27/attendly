@@ -5,24 +5,26 @@ import { attendlyClerkAppearance } from "@/lib/clerk-appearance";
 
 export default function SignInPage() {
   return (
-    <main className="flex min-h-dvh flex-col px-4 pb-10 pt-4">
-      <div className="flex items-center justify-between gap-3">
+    <main className="flex min-h-dvh flex-col">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-5 pt-4 sm:px-8 lg:px-10">
         <Link
           href="/"
-          className="font-display text-xl font-semibold tracking-tight text-ink"
+          className="font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl"
         >
           Attendly
         </Link>
         <ThemeToggle />
       </div>
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center py-8">
-        <SignIn
-          appearance={attendlyClerkAppearance}
-          forceRedirectUrl="/"
-          fallbackRedirectUrl="/"
-          signUpUrl="/sign-up"
-        />
-        <p className="mt-6 max-w-xs text-center text-xs leading-relaxed text-mute">
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-5 py-10 sm:px-8 lg:px-10">
+        <div className="w-full max-w-[26rem] sm:max-w-[28rem]">
+          <SignIn
+            appearance={attendlyClerkAppearance}
+            forceRedirectUrl="/"
+            fallbackRedirectUrl="/"
+            signUpUrl="/sign-up"
+          />
+        </div>
+        <p className="mt-6 max-w-sm text-center text-xs leading-relaxed text-mute">
           Attendance is stored on this device for now.
         </p>
       </div>

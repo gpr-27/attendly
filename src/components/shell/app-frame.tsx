@@ -41,10 +41,12 @@ export function AppFrame({ children }: AppFrameProps) {
   const bare = isBarePath(pathname) || !isSignedIn;
 
   if (bare) {
+    // Full viewport — landing / auth / onboarding own their own max-width.
+    // Do not cage signed-out pages in max-w-lg (looks like a phone UI on laptop).
     return (
-      <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col">
+      <div className="flex min-h-dvh w-full flex-col">
         {pathname.startsWith("/onboarding") ? (
-          <div className="flex items-center justify-end gap-3 px-4 pt-3">
+          <div className="mx-auto flex w-full max-w-xl items-center justify-end gap-3 px-4 pt-3 sm:px-6">
             <ThemeToggle />
             <ClerkAuthControls />
           </div>

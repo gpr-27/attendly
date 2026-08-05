@@ -205,7 +205,6 @@ export async function importBackup(
       // Ensure app does not bounce to empty onboarding after import.
       await db.settings.put({ ...payload.settings, onboarded: true })
     } else if (payload.subjects.length > 0) {
-      const { defaultSettings, SETTINGS_ID } = await import("./types")
       const base = defaultSettings()
       await db.settings.put({
         ...base,

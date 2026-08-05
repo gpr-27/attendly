@@ -1,52 +1,60 @@
 # Attendly
 
-Personal AI attendance co-pilot. Mark classes, track bunk %, plan skips — data stays **on your device** (Dexie → IndexedDB). Deploy the app to **Vercel**; attendance rows never leave the browser.
+Personal AI attendance co-pilot. Mark classes, track bunk %, plan skips.
 
-**Not a multi-user product.** No login, no Clerk, no Postgres/Mongo/Redis.
+**Auth:** Clerk sign-in required for the app. Signed-out visitors see a landing page only.  
+**Data:** Attendance stays **on your device** (Dexie → IndexedDB, isolated per Clerk user). Deploy the app to **Vercel**; marks never leave the browser (v1 — no cloud sync yet).
 
-## Personal local use + Vercel deploy path
+Live: [attendly-navy.vercel.app](https://attendly-navy.vercel.app) · Repo: [gpr-27/attendly](https://github.com/gpr-27/attendly)
+
+## Modes
 
 | Mode | What happens |
 |------|----------------|
-| Local (`npm run dev`) | PWA UI + Dexie in your browser. Optional AI via `.env.local`. |
-| Vercel (`npm run build` → deploy) | Hosts the Next.js app + `/api/ai/*` proxies. Your marks stay in **that device’s** IndexedDB. |
+| Local (`npm run dev`) | PWA UI + per-user Dexie in your browser. Clerk + optional AI via `.env.local`. |
+| Vercel (`npm run build` → deploy) | Hosts Next.js + `/api/ai/*`. Marks stay in that browser’s IndexedDB under `AttendlyDB_u_<userId>`. |
 
-Different devices = separate local data (no cloud sync in v1).
+Different devices / browsers = separate local data until cloud sync lands.
 
 ## Setup
 
 ```bash
 npm install
-cp .env.example .env.local   # then fill keys if you want AI
+cp .env.example .env.local   # fill Clerk + optional AI keys
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). First visit → **Onboarding** (you pick criteria / semester — nothing is pre-seeded).
+Open [http://localhost:3000](http://localhost:3000). Sign in → first visit runs **Onboarding** (criteria / semester — nothing is pre-seeded).
 
 ### Environment variables
 
-| Variable | Required? | Where | Purpose |
-|----------|-----------|--------|---------|
-| `GROQ_API_KEY` | For coach / AI chat | `.env.local` or Vercel → Environment Variables | Insights coach (`POST /api/ai/coach`); backup for photo/text parse |
-| `GEMINI_API_KEY` | For photo import | same | Timetable photo parse (`POST /api/ai/parse-timetable`) |
-| `GEMINI_MODEL` | Optional | same | Override Gemini model (default `gemini-2.0-flash`) |
-| `GROQ_MODEL` | Optional | same | Primary coach model (default `llama-3.3-70b-versatile`) |
-| `GROQ_FALLBACK_MODEL` | Optional | same | Retry model on 429/503 (default `llama-3.1-8b-instant`) |
+| Variable | Required? | Purpose |
+|----------|-----------|---------|
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Yes | Clerk client |
+| `CLERK_SECRET_KEY` | Yes | Clerk server |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | Recommended | `/sign-in` |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | Recommended | `/sign-up` |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL` | Recommended | `/` |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL` | Recommended | `/` |
+| `GROQ_API_KEY` | For coach / AI chat | Insights coach (`POST /api/ai/coach`) |
+| `GEMINI_API_KEY` | For photo import | Timetable photo parse |
+| `GEMINI_MODEL` | Optional | Default `gemini-2.0-flash` |
+| `GROQ_MODEL` | Optional | Default `llama-3.3-70b-versatile` |
+| `GROQ_FALLBACK_MODEL` | Optional | Default `llama-3.1-8b-instant` |
 
-Keys are **server-only** (`process.env` in Route Handlers). The app works without them for math + marking; AI features return a clear error until keys are set.
+Keys are **server-only** except `NEXT_PUBLIC_*`. App math + marking work without AI keys; AI routes return a clear error until set.
 
-**Never commit `.env.local`.** (gitignored via `.env*`; only `.env.example` is safe to commit.)
+**Never commit `.env.local`.**
 
 ### Vercel
 
-Framework preset: **Next.js**. Build: `npm run build`. No `vercel.json` needed (standard App Router deploy).
+Framework: **Next.js**. Build: `npm run build`.
 
-1. Commit + push the repo (GitHub/GitLab/Bitbucket), **or** run `npx vercel` from this folder
-2. Import on [Vercel](https://vercel.com) → Project Settings → Environment Variables
-3. Set at least `GROQ_API_KEY` and `GEMINI_API_KEY` for Production (and Preview if you want AI on preview deploys)
-4. Deploy. Install as PWA on your phone from the site.
+1. Push to GitHub (`gpr-27/attendly`) — Vercel project **attendly** is connected
+2. Project Settings → Environment Variables (Production + Preview): Clerk keys + `GROQ_API_KEY` / `GEMINI_API_KEY`
+3. Deploy. Install as PWA from the site.
 
-**Caveats:** Marks live in the browser’s IndexedDB (not on Vercel). Share schedule structure via Settings → schedule export/import (no marks). Attendance summary out = Download PDF. Groq/Gemini rate limits apply on free tiers.
+**Caveats:** Marks live in IndexedDB (not on Vercel). Share schedule structure via Settings → schedule export/import (no marks). Attendance summary out = Download PDF.
 
 ## Scripts
 
@@ -55,23 +63,20 @@ npm run dev          # local app
 npm run build        # production build (must pass before deploy)
 npm run test         # unit + integration (vitest)
 npm run test:watch   # vitest watch
-npm run test:e2e     # points to manual checklist (Playwright optional later)
+npm run test:e2e     # points to manual checklist
 ```
 
 ## Data model (on-device)
 
-Dexie stores: `settings`, `subjects`, `timetableSeries`, `seriesExceptions`, `calendarBlocks`, `classSessions`, `attendanceRecords`.
+Dexie stores (per signed-in user): `settings`, `subjects`, `timetableSeries`, `seriesExceptions`, `calendarBlocks`, `classSessions`, `attendanceRecords`.
 
-- **Marks out:** **Download attendance PDF** (Settings / Analytics / Today)
+- **Marks out:** Download attendance PDF (Settings / Analytics / Today)
 - **Schedule for friends / other devices:** Settings → export/import schedule JSON (**no attendance marks**)
-- Clearing site data wipes local Dexie data
-
-## Tests
-
-See `test/` and `test/E2E-CHECKLIST.md`. Automated suites use fixtures created in test code only — the app never ships demo subjects.
+- Clearing site data wipes that browser’s Dexie data
 
 ## Docs
 
 - `docs/AI-attendance-system-plan.md` — v1 plan
-- `docs/future-improvements.md` — later (Clerk, sync, etc.) — **not built**
+- `docs/UI-COMPONENT-MAP.md` — responsive UI map
+- `docs/future-improvements.md` — later ideas (cloud sync, etc.)
 - `docs/IMPLEMENTATION-JOURNAL.md` — living changelog
