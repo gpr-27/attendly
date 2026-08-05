@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { AiFocusProvider } from "@/components/ai/ai-focus-context";
+import { UserDatabaseProvider } from "@/components/shell/user-database-provider";
 import type { ThemeMode } from "@/lib/db/types";
 
 const THEME_EVENT = "attendly-theme-changed";
@@ -32,7 +33,8 @@ function applyA11yPrefs(prefs: {
 }
 
 async function syncFromSettings() {
-  const { getSettings } = await import("@/lib/db");
+  const { getBoundUserId, getSettings } = await import("@/lib/db");
+  if (!getBoundUserId()) return null;
   const settings = await getSettings();
   applyThemeMode(settings.theme);
   applyA11yPrefs({
@@ -43,8 +45,7 @@ async function syncFromSettings() {
   return settings;
 }
 
-/** Loads Dexie theme / a11y prefs onto <html> data attributes (+ .dark class). */
-export function AppProviders({ children }: { children: React.ReactNode }) {
+function ThemeSync({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
@@ -79,7 +80,18 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  return <AiFocusProvider>{children}</AiFocusProvider>;
+  return <>{children}</>;
+}
+
+/** Per-user Dexie + theme / a11y prefs onto <html>. */
+export function AppProviders({ children }: { children: React.ReactNode }) {
+  return (
+    <UserDatabaseProvider>
+      <ThemeSync>
+        <AiFocusProvider>{children}</AiFocusProvider>
+      </ThemeSync>
+    </UserDatabaseProvider>
+  );
 }
 
 /** Call after saving a11y/theme in Settings so UI updates without reload. */

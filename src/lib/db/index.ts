@@ -8,7 +8,13 @@ export {
   seriesOccurrenceKey,
   extraOccurrenceKey,
 } from "./types"
-export { db } from "./database"
+export {
+  db,
+  bindDatabaseForUser,
+  databaseNameForUser,
+  getBoundUserId,
+  createAttendanceDatabase,
+} from "./database"
 export type { AttendanceDatabase } from "./database"
 export * from "./repository"
 export {
