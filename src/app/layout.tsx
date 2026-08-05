@@ -3,6 +3,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { DM_Sans, Fraunces } from "next/font/google";
 import { AppFrame } from "@/components/shell/app-frame";
 import { AppProviders } from "@/components/shell/app-providers";
+import { attendlyClerkAppearance } from "@/lib/clerk-appearance";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -46,7 +47,7 @@ export default function RootLayout({
       className={`${dmSans.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col font-sans text-ink">
-        <ClerkProvider>
+        <ClerkProvider appearance={attendlyClerkAppearance}>
           <AppProviders>
             <AppFrame>{children}</AppFrame>
           </AppProviders>
