@@ -1,3 +1,4 @@
+import { scheduleCloudPush } from "./cloud-sync"
 import { db } from "./database"
 import {
   SETTINGS_ID,
@@ -19,6 +20,10 @@ function nowIso(): string {
 
 function newId(): string {
   return crypto.randomUUID()
+}
+
+function touchCloud() {
+  scheduleCloudPush()
 }
 
 function allTables() {
@@ -59,6 +64,7 @@ export async function saveSettings(
     updatedAt: nowIso(),
   }
   await db.settings.put(next)
+  touchCloud()
   return next
 }
 
@@ -87,6 +93,7 @@ export async function addSubject(
     updatedAt: stamp,
   }
   await db.subjects.add(subject)
+  touchCloud()
   return subject
 }
 
@@ -98,6 +105,7 @@ export async function updateSubject(
   if (!existing) throw new Error(`Subject not found: ${id}`)
   const next: Subject = { ...existing, ...patch, id, updatedAt: nowIso() }
   await db.subjects.put(next)
+  touchCloud()
   return next
 }
 
@@ -139,6 +147,7 @@ export async function deleteSubject(id: string): Promise<void> {
       await db.subjects.delete(id)
     },
   )
+  touchCloud()
 }
 
 // —— Timetable series ——
@@ -183,6 +192,7 @@ export async function addSeries(
     updatedAt: stamp,
   }
   await db.timetableSeries.add(series)
+  touchCloud()
   return series
 }
 
@@ -199,6 +209,7 @@ export async function updateSeries(
     updatedAt: nowIso(),
   }
   await db.timetableSeries.put(next)
+  touchCloud()
   return next
 }
 
@@ -207,6 +218,7 @@ export async function deleteSeries(id: string): Promise<void> {
     await db.seriesExceptions.where("seriesId").equals(id).delete()
     await db.timetableSeries.delete(id)
   })
+  touchCloud()
 }
 
 // —— Series exceptions ——
@@ -239,6 +251,7 @@ export async function upsertException(
       reason: input.reason,
     }
     await db.seriesExceptions.put(next)
+    touchCloud()
     return next
   }
 
@@ -254,11 +267,13 @@ export async function upsertException(
     createdAt: nowIso(),
   }
   await db.seriesExceptions.add(row)
+  touchCloud()
   return row
 }
 
 export async function deleteException(id: string): Promise<void> {
   await db.seriesExceptions.delete(id)
+  touchCloud()
 }
 
 /** Remove the exception for one series occurrence (if any). */
@@ -272,6 +287,7 @@ export async function deleteExceptionForOccurrence(
     .first()
   if (!existing) return false
   await db.seriesExceptions.delete(existing.id)
+  touchCloud()
   return true
 }
 
@@ -294,6 +310,7 @@ export async function addCalendarBlock(
     createdAt: nowIso(),
   }
   await db.calendarBlocks.add(block)
+  touchCloud()
   return block
 }
 
@@ -305,11 +322,13 @@ export async function updateCalendarBlock(
   if (!existing) throw new Error(`Calendar block not found: ${id}`)
   const next: CalendarBlock = { ...existing, ...patch, id }
   await db.calendarBlocks.put(next)
+  touchCloud()
   return next
 }
 
 export async function deleteCalendarBlock(id: string): Promise<void> {
   await db.calendarBlocks.delete(id)
+  touchCloud()
 }
 
 // —— Class sessions ——
@@ -342,6 +361,7 @@ export async function getSessionByOccurrenceKey(
 
 export async function putSession(session: ClassSession): Promise<string> {
   await db.classSessions.put(session)
+  touchCloud()
   return session.id
 }
 
@@ -350,6 +370,7 @@ export async function deleteSessionIfUnmarked(id: string): Promise<boolean> {
   const mark = await db.attendanceRecords.where("sessionId").equals(id).first()
   if (mark) return false
   await db.classSessions.delete(id)
+  touchCloud()
   return true
 }
 
@@ -379,6 +400,7 @@ export async function markAttendance(
       markedAt: nowIso(),
     }
     await db.attendanceRecords.put(next)
+    touchCloud()
     return next
   }
   const row: AttendanceRecord = {
@@ -389,12 +411,16 @@ export async function markAttendance(
     note,
   }
   await db.attendanceRecords.add(row)
+  touchCloud()
   return row
 }
 
 export async function clearAttendance(sessionId: string): Promise<void> {
   const row = await getAttendanceForSession(sessionId)
-  if (row) await db.attendanceRecords.delete(row.id)
+  if (row) {
+    await db.attendanceRecords.delete(row.id)
+    touchCloud()
+  }
 }
 
 export async function sessionIdsWithMarks(
@@ -414,4 +440,5 @@ export async function clearAllData(): Promise<void> {
   await db.transaction("rw", [...tables], async () => {
     await Promise.all(tables.map((t) => t.clear()))
   })
+  // Caller (import / settings wipe) should scheduleCloudPush when done.
 }

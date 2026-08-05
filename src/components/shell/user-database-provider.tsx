@@ -2,11 +2,12 @@
 
 import { useAuth } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
+import { syncAfterBind } from "@/lib/db/cloud-sync";
 import { bindDatabaseForUser } from "@/lib/db/database";
 
 /**
- * Binds Dexie to `AttendlyDB_u_<clerkUserId>` so each account has its own
- * local attendance data. Remounts children on user switch.
+ * Binds Dexie to `AttendlyDB_u_<clerkUserId>`, then syncs with Supabase
+ * (cloud → Dexie when remote has data; else Dexie → cloud). Remounts on switch.
  */
 export function UserDatabaseProvider({
   children,
@@ -30,7 +31,13 @@ export function UserDatabaseProvider({
 
     setError(null);
     void bindDatabaseForUser(userId)
-      .then(() => {
+      .then(async () => {
+        // Best-effort cloud sync; Dexie still usable offline if sync fails.
+        try {
+          await syncAfterBind();
+        } catch {
+          /* keep local cache */
+        }
         if (!cancelled) setReadyFor(userId);
       })
       .catch((err: unknown) => {
