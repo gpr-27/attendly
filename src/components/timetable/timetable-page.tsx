@@ -175,7 +175,7 @@ export function TimetablePage() {
 
   async function handleSaveSlot(input: {
     subjectId: string;
-    dayOfWeek: number;
+    daysOfWeek: number[];
     startTime: string;
     endTime: string;
     location?: string;
@@ -226,22 +226,58 @@ export function TimetablePage() {
       }
 
       const range = await ensureSemesterRange();
-      await addSeries({
-        subjectId: input.subjectId,
-        dayOfWeek: input.dayOfWeek as 0 | 1 | 2 | 3 | 4 | 5 | 6,
-        startTime,
-        endTime,
-        location: input.location,
-        sessionType: "lecture",
-        weekParity: input.weekParity,
-        effectiveFrom: range.from,
-        effectiveTo: null,
-        countsTowardAttendance: true,
-      });
+      const days = input.daysOfWeek.filter((d) => d >= 0 && d <= 6);
+      if (days.length === 0) {
+        throw new Error("Pick at least one day.");
+      }
+      const { addDaysYmd, dayOfWeekFromYmd, todayYmd: today } = await import(
+        "@/lib/dates",
+      );
+      const { findDaySlotOverlaps } = await import(
+        "@/lib/timetable/slot-overlap",
+      );
+      let probe = settings.semesterStart?.trim() || today();
+      if (probe < today()) probe = today();
+      for (const dayOfWeek of days) {
+        let checked = false;
+        for (let i = 0; i < 14; i += 1) {
+          const ymd = addDaysYmd(probe, i);
+          if (dayOfWeekFromYmd(ymd) !== dayOfWeek) continue;
+          const overlap = await findDaySlotOverlaps({
+            date: ymd,
+            startTime,
+            endTime,
+          });
+          if (!overlap.ok) throw new Error(overlap.message);
+          checked = true;
+          break;
+        }
+        if (!checked) {
+          throw new Error("Could not verify slot availability for a selected day.");
+        }
+      }
+      for (const dayOfWeek of days) {
+        await addSeries({
+          subjectId: input.subjectId,
+          dayOfWeek: dayOfWeek as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+          startTime,
+          endTime,
+          location: input.location,
+          sessionType: "lecture",
+          weekParity: input.weekParity,
+          effectiveFrom: range.from,
+          effectiveTo: null,
+          countsTowardAttendance: true,
+        });
+      }
       await ensureSessionsMaterialized({ from: range.from, to: range.to });
       setSheetOpen(false);
       await reload();
-      setSuccess("Class added to original permanent timetable (every week).");
+      setSuccess(
+        days.length > 1
+          ? `Class added every week on ${days.length} days.`
+          : "Class added to original permanent timetable (every week).",
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save slot");
     } finally {
