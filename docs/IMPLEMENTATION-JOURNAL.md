@@ -56,7 +56,7 @@ Read this anytime to understand **what changed** and **where it lives**.
 - **Bug:** Signed-out landing / sign-in looked like a phone UI on laptop — `AppFrame` bare wrapper used `max-w-lg`, plus landing `max-w-md`.
 - **What:** Bare shell is full viewport; landing uses `max-w-6xl` split (brand left, CTAs right on `lg+`; stacked full-width on phone). Sign-in / sign-up centered in wide chrome with larger Clerk card (~28rem). Onboarding keeps a readable `max-w-xl` form column. Clerk appearance: full-width card, taller inputs/buttons, modal max width. README corrected for Clerk-required auth + live URL. Today shell already had desktop grid — no cage change there.
 - **Files:** `landing-page.tsx`, `app-frame.tsx`, `sign-in` / `sign-up` pages, `onboarding/page.tsx`, `onboarding-intro.tsx`, `clerk-appearance.ts`, `README.md`, `UI-COMPONENT-MAP.md`, this journal.
-- **Verify:** `npm run build` · push `main` · confirm Vercel READY on latest SHA.
+- **Verify:** `npm run build` · pushed `e58c8ec` · Vercel production **READY** on that SHA (`attendly-navy.vercel.app`). Desktop check: landing grid `672px | 320px` at 1280px width; no `max-w-lg` cage.
 - **For user:** Open https://attendly-navy.vercel.app on a laptop — landing should read as a wide Attendly hero, not a skinny mobile column.
 
 ### 2026-08-05 — Fix import vanishing on production reload
