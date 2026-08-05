@@ -6,6 +6,7 @@ import {
   SignUpButton,
   UserButton,
 } from "@clerk/nextjs";
+import { attendlyClerkAppearance } from "@/lib/clerk-appearance";
 import { cn } from "@/lib/utils/cn";
 
 type ClerkAuthControlsProps = {
@@ -49,7 +50,7 @@ export function ClerkAuthControls({
             type="button"
             className={cn(
               "inline-flex items-center justify-center rounded-xl px-3 py-1.5 text-sm font-semibold transition",
-              "bg-brand text-white hover:opacity-90",
+              "bg-brand text-white hover:bg-brand-deep",
               layout === "stack" && "w-full min-h-10",
             )}
           >
@@ -60,8 +61,10 @@ export function ClerkAuthControls({
       <Show when="signed-in">
         <UserButton
           appearance={{
+            ...attendlyClerkAppearance,
             elements: {
-              avatarBox: "size-8",
+              ...attendlyClerkAppearance.elements,
+              avatarBox: "size-8 ring-2 ring-brand/25",
             },
           }}
         />

@@ -52,6 +52,12 @@ Read this anytime to understand **what changed** and **where it lives**.
 
 ## Changelog
 
+### 2026-08-05 — Onboarding page + Clerk UI taste
+- **What:** Front/onboarding (“Set your bar”) now reads as Clerk-aware without blocking Dexie-local setup. Bare top bar keeps centered theme toggle and shows Sign in / Sign up (`Show` + modal buttons) or `UserButton` when signed in. Auth-aware intro copy (local-on-device vs welcome + still local). Soft optional account prompt. Clerk modals/UserButton use Attendly teal via `attendlyClerkAppearance` (CSS vars track light/dark).
+- **Files:** `src/app/onboarding/page.tsx`, `src/components/onboarding/{onboarding-intro,auth-prompt}.tsx`, `src/lib/clerk-appearance.ts`, `src/app/layout.tsx`, `src/components/shell/{app-frame,clerk-auth-controls}.tsx`, `docs/UI-COMPONENT-MAP.md`, this journal.
+- **Verify:** `npm run build`.
+- **For user:** Onboarding stays completable unsigned; Sign in is optional polish for later sync.
+
 ### 2026-08-05 — Clerk auth (optional sign-in)
 - **What:** Added `@clerk/nextjs` with modern App Router APIs. `src/proxy.ts` runs `clerkMiddleware()` (Next 16 filename; open by default so Dexie-local browsing still works unsigned). `ClerkProvider` wraps the app inside `<body>`. Shell chrome shows `<Show>` + SignIn/SignUp/UserButton (no SignedIn/SignedOut).
 - **Files:** `src/proxy.ts`, `src/app/layout.tsx`, `src/components/shell/clerk-auth-controls.tsx`, `app-frame.tsx`, `side-nav.tsx`, `.env.example`, this journal.
@@ -576,7 +582,7 @@ Read this anytime to understand **what changed** and **where it lives**.
 | AI status API | `src/app/api/ai/status/route.ts` | `GET /api/ai/status` |
 | Shell | `src/components/shell/`, `src/app/layout.tsx`, `src/app/globals.css` | Responsive frame: side nav `md+`, bottom nav mobile, theme toggle, Clerk auth controls, AI FAB |
 | Clerk proxy | `src/proxy.ts` | `clerkMiddleware()` (Next 16); matcher includes `/__clerk/:path*`; routes public by default |
-| Clerk UI | `src/components/shell/clerk-auth-controls.tsx` | `<Show>` + SignInButton / SignUpButton / UserButton in shell |
+| Clerk UI | `src/components/shell/clerk-auth-controls.tsx`, `src/lib/clerk-appearance.ts` | `<Show>` + SignIn/SignUp/UserButton; Attendly teal appearance |
 | Shared AI | `src/components/ai/`, `src/hooks/use-coach-chat.ts`, `src/lib/ai/page-ai-config.ts` | Panel / FAB / page cards + pageContext |
 | Day agenda | `src/lib/dates.ts`, `src/lib/today/load-day-agenda.ts`, `day-navigator`, `day-agenda` | Any-day class list + marks |
 | Shared UI | `src/components/ui/` | Button, card, empty-hub, page-header, pct-ring re-export |
@@ -584,7 +590,7 @@ Read this anytime to understand **what changed** and **where it lives**.
 | Today UI | `src/app/page.tsx`, `src/components/today/` | Standing hero, empty hub, agenda, mark actions, AI dock |
 | Notifications | `src/lib/notifications/` | Local Notification API + optional SW; schedule from Today |
 | Service worker | `public/sw.js` | Show/click local notifications (no push) |
-| Onboarding | `src/app/onboarding/page.tsx` | Criteria / semester / buffer → Dexie settings |
+| Onboarding | `src/app/onboarding/page.tsx`, `src/components/onboarding/` | Criteria / semester / buffer → Dexie; auth-aware copy + soft prompt |
 | Settings UI | `src/app/settings/page.tsx` | Criteria + a11y + notifications + Summary PDF + schedule backup + Daily periods |
 | Daily periods editor | `src/components/settings/daily-periods-editor.tsx` | Edit fixed college slot template (`Settings.periodSlots`) |
 | Period slot helpers | `src/lib/timetable/period-slots.ts` | Normalize / resolve `slotIndex` → times |

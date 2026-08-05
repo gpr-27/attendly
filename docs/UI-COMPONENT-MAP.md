@@ -158,7 +158,10 @@ Coach must work when `GROQ_API_KEY` is set server-side; show a clear error if th
 
 | File | Purpose | Desktop | Mobile |
 |---|---|---|---|
-| `src/app/onboarding/page.tsx` (and/or `src/components/onboarding/onboarding-flow.tsx` if extracted) | First-run: criteria 75/80/85, semester, buffer → `saveSettings({ onboarded: true })` | Centered card in bare frame (no nav) | Full-screen steps, large taps |
+| `src/app/onboarding/page.tsx` | First-run: criteria 75/80/85, semester, buffer → `saveSettings({ onboarded: true })` | Centered form in bare frame (no nav) | Full-screen steps, large taps |
+| `src/components/onboarding/onboarding-intro.tsx` | Auth-aware headline (`Show` signed-in/out copy) | Same | Same |
+| `src/components/onboarding/auth-prompt.tsx` | Soft optional Sign in / Sign up nudge (does not block Start) | Same | Same |
+| Bare chrome (`AppFrame`) | Centered `ThemeToggle` + `ClerkAuthControls` (Sign in/up or `UserButton`) | Same | Same |
 
 ---
 

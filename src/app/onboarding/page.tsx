@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { addMonths, format } from "date-fns";
 import { AiOnboardingTip } from "@/components/ai/ai-assistant-panel";
+import { OnboardingAuthPrompt } from "@/components/onboarding/auth-prompt";
+import { OnboardingIntro } from "@/components/onboarding/onboarding-intro";
 import { mondayOfWeekYmd, todayYmd } from "@/lib/dates";
 
 const CRITERIA = [75, 80, 85] as const;
@@ -58,20 +60,10 @@ export default function OnboardingPage() {
   }
 
   return (
-    <main className="flex min-h-dvh flex-col px-4 pb-10 pt-10">
-      <header className="rise mb-8">
-        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-brand">
-          Attendly
-        </p>
-        <h1 className="font-display mt-2 text-3xl font-semibold tracking-tight text-ink">
-          Set your bar
-        </h1>
-        <p className="mt-2 max-w-sm text-sm leading-relaxed text-ink-soft">
-          Criteria and buffer live on this device only. No sample subjects — you
-          add the timetable next.
-        </p>
-      </header>
+    <main className="flex min-h-dvh flex-col px-4 pb-10 pt-6">
+      <OnboardingIntro />
 
+      <OnboardingAuthPrompt />
       <AiOnboardingTip />
 
       <section className="rise rise-delay-1 space-y-6">

@@ -26,9 +26,9 @@ export function AppFrame({ children }: AppFrameProps) {
   if (bare) {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col">
-        <div className="flex items-center justify-end gap-2 px-4 pt-3">
-          <ClerkAuthControls />
+        <div className="flex items-center justify-between gap-3 px-4 pt-3">
           <ThemeToggle />
+          <ClerkAuthControls />
         </div>
         <div className="flex-1">{children}</div>
       </div>
