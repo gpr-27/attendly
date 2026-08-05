@@ -17,8 +17,9 @@ export function PlanPage() {
           Plan attendance
         </h1>
         <p className="mt-1.5 text-sm text-mute">
-          Bunk simulator, safe-week impact, and semester-end projection from
-          your real marks — rules own the math.
+          Advanced bunk simulator with all-subject outlook, pick-classes mode,
+          recovery path, term forecast, and semester branches — from your real
+          marks.
         </p>
         <p className="mt-2 text-sm">
           <Link

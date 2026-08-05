@@ -60,6 +60,19 @@ export {
 } from "./safe-week";
 
 export {
+  buildSkipAttendLadder,
+  buildSubjectBunkOutlook,
+  listUpcomingCountableSessions,
+  simulateBunkScenario,
+  skipsUntilRiskBand,
+  type BunkScenarioResult,
+  type PickableSession,
+  type SkipAttendStep,
+  type SubjectBunkOutlook,
+  type UpcomingSessionRow,
+} from "./bunk-simulator-math";
+
+export {
   buildAnalyticsKeyPoints,
   loadSubjectStandings,
   type SubjectStandingRow,
