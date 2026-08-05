@@ -3,7 +3,7 @@
 Personal AI attendance co-pilot. Mark classes, track bunk %, plan skips.
 
 **Auth:** Clerk sign-in required for the app. Signed-out visitors see a landing page only.  
-**Data:** Attendance stays **on your device** (Dexie → IndexedDB, isolated per Clerk user). Deploy the app to **Vercel**; marks never leave the browser (v1 — no cloud sync yet).
+**Data:** Dexie offline cache per Clerk user + **Supabase Postgres** sync when online. Marks and schedule sync to your cloud account; Dexie is the on-device cache.
 
 Live: [attendly-navy.vercel.app](https://attendly-navy.vercel.app) · Repo: [gpr-27/attendly](https://github.com/gpr-27/attendly)
 
@@ -14,7 +14,7 @@ Live: [attendly-navy.vercel.app](https://attendly-navy.vercel.app) · Repo: [gpr
 | Local (`npm run dev`) | PWA UI + per-user Dexie in your browser. Clerk + optional AI via `.env.local`. |
 | Vercel (`npm run build` → deploy) | Hosts Next.js + `/api/ai/*`. Marks stay in that browser’s IndexedDB under `AttendlyDB_u_<userId>`. |
 
-Different devices / browsers = separate local data until cloud sync lands.
+Different devices / browsers share data after sign-in once sync completes (same Clerk account).
 
 ## Setup
 
@@ -76,7 +76,8 @@ Dexie stores (per signed-in user): `settings`, `subjects`, `timetableSeries`, `s
 
 ## Docs
 
+- `docs/PRODUCT-ROADMAP.md` — **feature review, gaps, and what to build next** (AI + product)
 - `docs/AI-attendance-system-plan.md` — v1 plan
 - `docs/UI-COMPONENT-MAP.md` — responsive UI map
-- `docs/future-improvements.md` — later ideas (cloud sync, etc.)
+- `docs/future-improvements.md` — earlier idea archive (see roadmap for current state)
 - `docs/IMPLEMENTATION-JOURNAL.md` — living changelog

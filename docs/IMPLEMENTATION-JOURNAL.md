@@ -23,7 +23,8 @@ Read this anytime to understand **what changed** and **where it lives**.
 |-----|------|
 | [AI-attendance-system-plan.md](./AI-attendance-system-plan.md) | Product plan (v1) |
 | [UI-COMPONENT-MAP.md](./UI-COMPONENT-MAP.md) | Target UI map for the responsive redesign (every component, desktop vs mobile) |
-| [future-improvements.md](./future-improvements.md) | Later ideas (do not build in v1) |
+| [future-improvements.md](./future-improvements.md) | Earlier idea archive (see PRODUCT-ROADMAP for current) |
+| [PRODUCT-ROADMAP.md](./PRODUCT-ROADMAP.md) | Full feature review + prioritized roadmap |
 | [PLUGINS-RECOMMENDED.md](./PLUGINS-RECOMMENDED.md) | Cursor plugins / MCP / Marketplace for later auth, DB, deploy, push |
 
 ---
@@ -51,6 +52,14 @@ Read this anytime to understand **what changed** and **where it lives**.
 ---
 
 ## Changelog
+
+### 2026-08-06 — Public searchable groups + group chat (v1)
+- **What:** Signed-in users can **search public groups**, **create** a group, **join/leave**, and **chat** with members. Data lives in **Supabase** (`groups`, `group_members`, `group_messages`) — not Dexie. Chat is text-only; no attendance marks in groups. Live updates use **HTTP polling** (~3s, `after` cursor) — not custom WebSockets (Supabase Realtime is a future upgrade).
+- **Auth / security:** Same pattern as attendance sync — Clerk `auth().userId` on every API route; Supabase **service role** server-side only; RLS enabled with no anon policies.
+- **Routes:** `/groups` (search + list), `/groups/new`, `/groups/[id]` (detail + chat). API: `/api/groups`, `/api/groups/[id]`, join/leave/messages.
+- **Files:** `supabase/migrations/20260806000000_public_groups_chat.sql`, `src/lib/groups/*`, `src/app/api/groups/**`, `src/components/groups/*`, `src/app/groups/**`, `nav-config.ts`, `database.types.ts`, `test/unit/groups/validation.test.ts`, `UI-COMPONENT-MAP.md`, this journal.
+- **Verify:** `npm run test:unit` · `npm run build` · migration applied to Supabase project `wulbivagfngyzreoefwo`.
+- **For user:** Open **Groups** in the nav → search or create → join → chat. Requires Supabase env vars on Vercel (same as sync).
 
 ### 2026-08-05 — Supabase cloud DB + Clerk identity + Import → cloud
 - **What:** Attendly attendance data is stored in **Supabase Postgres** (project `wulbivagfngyzreoefwo`, region `ap-south-1`). Dexie is the per-Clerk-user offline cache (`AttendlyDB_u_<userId>`); when online, **cloud is source of truth**.

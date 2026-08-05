@@ -1,10 +1,11 @@
 # Future Improvements (After Personal v1)
 
-**Status:** Ideas only — **not** part of the current personal-use build.  
-**Current v1:** No login · Dexie on-device · Vercel · you-only tracker  
-**See also:** [AI-attendance-system-plan.md](./AI-attendance-system-plan.md) · [PLUGINS-RECOMMENDED.md](./PLUGINS-RECOMMENDED.md) (Cursor MCP / Marketplace when you add Clerk, DB, push, etc.)
+> **Updated roadmap:** See **[PRODUCT-ROADMAP.md](./PRODUCT-ROADMAP.md)** (2026-08-06) for a full feature review, gaps, and prioritized next steps.  
+> This file is kept for historical tier ideas; several items below are **already shipped** (Clerk, Supabase sync, bunk simulator v2, mobile polish).
 
-Use this list when v1 is stable and you want to grow the app.
+**Status:** Ideas archive + early planning notes  
+**Current stack:** Clerk auth · Dexie per-user cache · Supabase Postgres sync · Vercel  
+**See also:** [PRODUCT-ROADMAP.md](./PRODUCT-ROADMAP.md) · [AI-attendance-system-plan.md](./AI-attendance-system-plan.md) · [PLUGINS-RECOMMENDED.md](./PLUGINS-RECOMMENDED.md)
 
 ---
 
