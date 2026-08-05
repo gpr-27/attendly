@@ -632,3 +632,11 @@ npm run test:api      # mocked Gemini/Groq routes
 ```
 
 Env: `.env.local` with `GROQ_API_KEY` and `GEMINI_API_KEY` (gitignored). See `.env.example`. Never overwrite `.env.local` secrets. Manual UI checks: `test/E2E-CHECKLIST.md`.
+
+## 2026-08-05 — Push & Vercel production deploy
+
+- Initial commit `4556704` pushed to `https://github.com/gpr-27/attendly` (`main`).
+- Vercel project **attendly** created under team `praneethg1830-7293s-projects`, GitHub repo connected.
+- Production live: https://attendly-navy.vercel.app
+- Dashboard: https://vercel.com/praneethg1830-7293s-projects/attendly
+- Set in Vercel Project → Settings → Environment Variables (Production + Preview): `GROQ_API_KEY`, `GEMINI_API_KEY` (optional: `GROQ_MODEL`, `GROQ_FALLBACK_MODEL`). Redeploy after adding keys.
