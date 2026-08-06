@@ -3,7 +3,7 @@
 Personal AI attendance co-pilot. Mark classes, track bunk %, plan skips.
 
 **Auth:** Clerk sign-in required for the app. Signed-out visitors see a landing page only.  
-**Data:** Dexie offline cache per Clerk user + **Supabase Postgres** sync when online. Marks and schedule sync to your cloud account; Dexie is the on-device cache.
+**Data:** **Supabase Postgres** is the source of truth for attendance, settings, and schedule. Dexie (IndexedDB) is a per-user read-through cache for fast UI and offline reads; writes push to cloud immediately for marks and settings.
 
 Live: [attendly-navy.vercel.app](https://attendly-navy.vercel.app) · Repo: [gpr-27/attendly](https://github.com/gpr-27/attendly)
 
@@ -11,8 +11,8 @@ Live: [attendly-navy.vercel.app](https://attendly-navy.vercel.app) · Repo: [gpr
 
 | Mode | What happens |
 |------|----------------|
-| Local (`npm run dev`) | PWA UI + per-user Dexie in your browser. Clerk + optional AI via `.env.local`. |
-| Vercel (`npm run build` → deploy) | Hosts Next.js + `/api/ai/*`. Marks stay in that browser’s IndexedDB under `AttendlyDB_u_<userId>`. |
+| Local (`npm run dev`) | PWA UI + Dexie cache per Clerk user. Writes push to Supabase via `/api/sync` when configured. |
+| Vercel (`npm run build` → deploy) | Next.js + `/api/sync` (Clerk auth + Supabase service role). Cloud is authoritative; Dexie hydrates on sign-in. |
 
 Different devices / browsers share data after sign-in once sync completes (same Clerk account).
 
@@ -54,7 +54,7 @@ Framework: **Next.js**. Build: `npm run build`.
 2. Project Settings → Environment Variables (Production + Preview): Clerk keys + `GROQ_API_KEY` / `GEMINI_API_KEY`
 3. Deploy. Install as PWA from the site.
 
-**Caveats:** Marks live in IndexedDB (not on Vercel). Share schedule structure via Settings → schedule export/import (no marks). Attendance summary out = Download PDF.
+**Caveats:** Dexie is a cache only — marks and schedule live in Supabase for your Clerk account. Share schedule structure via Settings → schedule export/import (no marks). Attendance summary out = Download PDF.
 
 ## Scripts
 
@@ -68,11 +68,11 @@ npm run test:e2e     # points to manual checklist
 
 ## Data model (on-device)
 
-Dexie stores (per signed-in user): `settings`, `subjects`, `timetableSeries`, `seriesExceptions`, `calendarBlocks`, `classSessions`, `attendanceRecords`.
+Dexie stores (per signed-in user, **cache only**): `settings`, `subjects`, `timetableSeries`, `seriesExceptions`, `calendarBlocks`, `classSessions`, `attendanceRecords`. Authoritative copy: Supabase Postgres (same shape, scoped by `clerk_user_id`).
 
 - **Marks out:** Download attendance PDF (Settings / Analytics / Today)
 - **Schedule for friends / other devices:** Settings → export/import schedule JSON (**no attendance marks**)
-- Clearing site data wipes that browser’s Dexie data
+- Clearing site data wipes the local cache; sign in again to rehydrate from cloud
 
 ## Docs
 

@@ -6,8 +6,8 @@ import { syncAfterBind, registerCloudPushLifecycle } from "@/lib/db/cloud-sync";
 import { bindDatabaseForUser } from "@/lib/db/database";
 
 /**
- * Binds Dexie to `AttendlyDB_u_<clerkUserId>`, then syncs with Supabase
- * (cloud → Dexie when remote has data; else Dexie → cloud). Remounts on switch.
+ * Binds Dexie to `AttendlyDB_u_<clerkUserId>`, then pulls from Supabase
+ * (cloud-first merge into Dexie cache). Remounts on account switch.
  */
 export function UserDatabaseProvider({
   children,

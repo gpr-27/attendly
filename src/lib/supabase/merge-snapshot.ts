@@ -16,7 +16,8 @@ function mergeById<T extends WithUpdatedAt>(remote: T[], local: T[]): T[] {
   for (const row of remote) map.set(row.id, row);
   for (const row of local) {
     const existing = map.get(row.id);
-    if (!existing || (row.updatedAt ?? "") >= (existing.updatedAt ?? "")) {
+    // Cloud wins on tie — local only overrides when strictly newer.
+    if (!existing || (row.updatedAt ?? "") > (existing.updatedAt ?? "")) {
       map.set(row.id, row);
     }
   }
@@ -56,18 +57,18 @@ function mergeClassSessions(
       if (candidateMarked && !existingMarked) {
         byOccurrenceKey.set(session.occurrenceKey, session);
       } else if (!existingMarked && !candidateMarked) {
-        if (session.updatedAt >= existingByKey.updatedAt) {
+        if (session.updatedAt > existingByKey.updatedAt) {
           byOccurrenceKey.set(session.occurrenceKey, session);
         }
       } else if (candidateMarked && existingMarked) {
-        if (session.updatedAt >= existingByKey.updatedAt) {
+        if (session.updatedAt > existingByKey.updatedAt) {
           byOccurrenceKey.set(session.occurrenceKey, session);
         }
       }
     }
 
     const existingById = byId.get(session.id);
-    if (!existingById || session.updatedAt >= existingById.updatedAt) {
+    if (!existingById || session.updatedAt > existingById.updatedAt) {
       byId.set(session.id, session);
     }
   }
@@ -99,7 +100,7 @@ function mergeSettings(
 ): Settings | null {
   if (!remote) return local;
   if (!local) return remote;
-  return (local.updatedAt ?? "") >= (remote.updatedAt ?? "") ? local : remote;
+  return (local.updatedAt ?? "") > (remote.updatedAt ?? "") ? local : remote;
 }
 
 /**
