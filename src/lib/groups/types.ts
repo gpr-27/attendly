@@ -33,6 +33,13 @@ export interface GroupMember {
   clerkUserId: string;
   role: GroupRole;
   joinedAt: string;
+  /** Best-effort display name resolved server-side from Clerk. */
+  displayName?: string | null;
+}
+
+export interface GroupMemberListResult {
+  members: GroupMember[];
+  total: number;
 }
 
 export interface GroupMessage {

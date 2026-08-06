@@ -53,6 +53,13 @@ Read this anytime to understand **what changed** and **where it lives**.
 
 ## Changelog
 
+### 2026-08-06 — Groups chat UX: scroll, members, delete
+- **What:** Fixed group chat **scroll** (flex column + `min-h-0` overflow, auto-scroll on load/new messages when near bottom, mobile `100dvh` layout). Added **member count badge** (tap → members sheet) via `GET /api/groups/[id]/members`. Added **delete own messages** (hard delete, author or admin) via `DELETE /api/groups/[id]/messages/[messageId]` with ⋮ menu on own messages.
+- **Delete policy:** Hard delete in v1 — no `deleted_at` migration needed. Documented in `deleteGroupMessage()` in `src/lib/groups/server.ts`.
+- **Routes/API:** `GET /api/groups/[id]/members`, `DELETE /api/groups/[id]/messages/[messageId]`.
+- **Files:** `src/lib/groups/server.ts`, `client.ts`, `types.ts`, `validation.ts`, `src/app/api/groups/[id]/members/route.ts`, `src/app/api/groups/[id]/messages/[messageId]/route.ts`, `src/components/groups/group-chat.tsx`, `group-detail-page.tsx`, `group-members-sheet.tsx`, `test/unit/groups/validation.test.ts`, this journal.
+- **Verify:** `npm run test:unit` · `npm run build`. No new Supabase migration required.
+
 ### 2026-08-06 — Mobile hamburger navigation drawer
 - **What:** On viewports below `md`, a **hamburger menu** in the top bar opens a slide-over drawer with **all** destinations from `nav-config.ts` (Today through Settings). Bottom tab bar kept for primary routes (Today, Timetable, Subjects, Coach, Settings); drawer exposes Groups, Plan, Calendar, Analytics, Import, etc. Drawer closes on link tap, backdrop tap, or Escape. Theme toggle + Clerk user controls live in the drawer footer. Desktop side nav unchanged.
 - **Files:** `src/components/shell/mobile-nav-drawer.tsx` (new), `src/components/shell/app-frame.tsx`, this journal.

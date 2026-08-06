@@ -66,6 +66,16 @@ export function validateMessageBody(body: string): ValidationResult {
   return { ok: true };
 }
 
+/** Whether the actor may delete a message (author or group admin). */
+export function canDeleteGroupMessage(params: {
+  authorId: string;
+  actorId: string;
+  actorRole: "member" | "admin" | null;
+}): boolean {
+  if (!params.actorRole) return false;
+  return params.actorId === params.authorId || params.actorRole === "admin";
+}
+
 /** Lowercase, hyphenated, ASCII-safe base for a group URL slug. Never empty. */
 export function slugifyGroupName(name: string): string {
   const base = name

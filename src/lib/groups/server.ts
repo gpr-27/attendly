@@ -24,11 +24,14 @@ import type {
   Group,
   GroupDetail,
   GroupListResult,
+  GroupMember,
+  GroupMemberListResult,
   GroupMessage,
   GroupRole,
 } from "./types";
 import {
   buildGroupSlug,
+  canDeleteGroupMessage,
   clampPage,
   clampPageSize,
   DEFAULT_MESSAGE_PAGE_SIZE,
@@ -421,6 +424,86 @@ export async function sendGroupMessage(
     ...groupMessageFromRow(data),
     senderName: names.get(clerkUserId) ?? null,
   };
+}
+
+/**
+ * List members of a group. Any signed-in user may list members of a public group
+ * (member count is already public on group detail).
+ */
+export async function listGroupMembers(
+  groupId: string,
+  _clerkUserId: string,
+): Promise<GroupMemberListResult> {
+  const sb = getSupabaseAdmin();
+  const { data: group, error: groupError } = await sb
+    .from("groups")
+    .select("id, is_public")
+    .eq("id", groupId)
+    .maybeSingle<{ id: string; is_public: boolean }>();
+  if (groupError) throw new GroupError(`Group lookup failed: ${groupError.message}`, 500);
+  if (!group) throw new GroupError("Group not found.", 404);
+  if (!group.is_public) throw new GroupError("This group is not public.", 403);
+
+  const { data, error } = await sb
+    .from("group_members")
+    .select("*")
+    .eq("group_id", groupId)
+    .order("joined_at", { ascending: true })
+    .returns<GroupMemberRow[]>();
+  if (error) throw new GroupError(`Could not load members: ${error.message}`, 500);
+
+  const rows = data ?? [];
+  const names = await resolveSenderNames(rows.map((r) => r.clerk_user_id));
+  const members: GroupMember[] = rows.map((row) => ({
+    ...groupMemberFromRow(row),
+    displayName: names.get(row.clerk_user_id) ?? null,
+  }));
+  return { members, total: members.length };
+}
+
+/**
+ * Hard-delete a chat message (v1 — no soft-delete column).
+ * Only the message author or a group admin may delete.
+ */
+export async function deleteGroupMessage(
+  groupId: string,
+  messageId: string,
+  clerkUserId: string,
+): Promise<{ deleted: boolean }> {
+  const role = await getMembershipRole(groupId, clerkUserId);
+  if (!role) throw new GroupError("Join this group to manage messages.", 403);
+
+  const sb = getSupabaseAdmin();
+  const { data: message, error: lookupError } = await sb
+    .from("group_messages")
+    .select("id, clerk_user_id, group_id")
+    .eq("id", messageId)
+    .eq("group_id", groupId)
+    .maybeSingle<{ id: string; clerk_user_id: string; group_id: string }>();
+  if (lookupError) {
+    throw new GroupError(`Message lookup failed: ${lookupError.message}`, 500);
+  }
+  if (!message) throw new GroupError("Message not found.", 404);
+
+  if (
+    !canDeleteGroupMessage({
+      authorId: message.clerk_user_id,
+      actorId: clerkUserId,
+      actorRole: role,
+    })
+  ) {
+    throw new GroupError("You can only delete your own messages.", 403);
+  }
+
+  const { error: deleteError } = await sb
+    .from("group_messages")
+    .delete()
+    .eq("id", messageId)
+    .eq("group_id", groupId);
+  if (deleteError) {
+    throw new GroupError(`Could not delete message: ${deleteError.message}`, 500);
+  }
+  return { deleted: true };
 }
 
 export { groupMemberFromRow };
