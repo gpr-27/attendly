@@ -2,7 +2,7 @@
 
 import { useAuth } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
-import { syncAfterBind } from "@/lib/db/cloud-sync";
+import { syncAfterBind, registerCloudPushLifecycle } from "@/lib/db/cloud-sync";
 import { bindDatabaseForUser } from "@/lib/db/database";
 
 /**
@@ -17,6 +17,10 @@ export function UserDatabaseProvider({
   const { isLoaded, isSignedIn, userId } = useAuth();
   const [readyFor, setReadyFor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    registerCloudPushLifecycle();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
