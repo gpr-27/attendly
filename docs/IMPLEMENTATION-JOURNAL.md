@@ -53,6 +53,10 @@ Read this anytime to understand **what changed** and **where it lives**.
 
 ## Changelog
 
+### 2026-08-06 — Mobile hamburger navigation drawer
+- **What:** On viewports below `md`, a **hamburger menu** in the top bar opens a slide-over drawer with **all** destinations from `nav-config.ts` (Today through Settings). Bottom tab bar kept for primary routes (Today, Timetable, Subjects, Coach, Settings); drawer exposes Groups, Plan, Calendar, Analytics, Import, etc. Drawer closes on link tap, backdrop tap, or Escape. Theme toggle + Clerk user controls live in the drawer footer. Desktop side nav unchanged.
+- **Files:** `src/components/shell/mobile-nav-drawer.tsx` (new), `src/components/shell/app-frame.tsx`, this journal.
+
 ### 2026-08-06 — Public searchable groups + group chat (v1)
 - **What:** Signed-in users can **search public groups**, **create** a group, **join/leave**, and **chat** with members. Data lives in **Supabase** (`groups`, `group_members`, `group_messages`) — not Dexie. Chat is text-only; no attendance marks in groups. Live updates use **HTTP polling** (~3s, `after` cursor) — not custom WebSockets (Supabase Realtime is a future upgrade).
 - **Auth / security:** Same pattern as attendance sync — Clerk `auth().userId` on every API route; Supabase **service role** server-side only; RLS enabled with no anon policies.
