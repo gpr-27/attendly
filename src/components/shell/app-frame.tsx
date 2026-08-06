@@ -2,11 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { InsightPopup } from "@/components/ai/insight-popup";
 import { useAiFocusOptional } from "@/components/ai/ai-focus-context";
 import { BottomNav } from "@/components/shell/bottom-nav";
 import { ClerkAuthControls } from "@/components/shell/clerk-auth-controls";
+import {
+  MobileNavDrawer,
+  MobileNavMenuButton,
+} from "@/components/shell/mobile-nav-drawer";
 import { SideNav } from "@/components/shell/side-nav";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
 
@@ -32,6 +37,7 @@ export function AppFrame({ children }: AppFrameProps) {
   const { isSignedIn, isLoaded } = useAuth();
   const focusCtx = useAiFocusOptional();
   const showInsightPopup = Boolean(focusCtx?.insightOpen && focusCtx?.focus);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Avoid signed-out shell flash while Clerk hydrates; keep layout neutral until loaded.
   if (!isLoaded) {
@@ -60,17 +66,21 @@ export function AppFrame({ children }: AppFrameProps) {
     <div className="mx-auto flex min-h-dvh w-full max-w-[1200px]">
       <SideNav />
       <div className="relative flex min-w-0 flex-1 flex-col">
-        <header className="safe-area-pt sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-line/60 bg-surface/90 px-4 py-2.5 backdrop-blur-md md:hidden">
-          <Link href="/" className="min-w-0 truncate pr-2">
+        <header className="safe-area-pt sticky top-0 z-30 flex items-center gap-2 border-b border-line/60 bg-surface/90 px-3 py-2 backdrop-blur-md md:hidden">
+          <MobileNavMenuButton
+            open={mobileNavOpen}
+            onOpenChange={setMobileNavOpen}
+          />
+          <Link href="/" className="min-w-0 flex-1 truncate">
             <p className="font-display text-lg font-semibold tracking-tight text-ink">
               Attendly
             </p>
           </Link>
-          <div className="flex shrink-0 items-center gap-2">
-            <ClerkAuthControls />
-            <ThemeToggle className="shrink-0" />
-          </div>
         </header>
+        <MobileNavDrawer
+          open={mobileNavOpen}
+          onOpenChange={setMobileNavOpen}
+        />
         <div className="flex-1 pb-[calc(var(--nav-total-h)+1.25rem)] md:pb-6">
           {children}
         </div>
