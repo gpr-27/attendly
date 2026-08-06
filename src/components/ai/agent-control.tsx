@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Send, Sparkles, X } from "lucide-react";
 import {
   ActionRunner,
@@ -9,14 +9,11 @@ import {
 import {
   AgentModeTabs,
   AssistantMessage,
-  ChatComposer,
-  ChatMessageList,
   ChatStarterChips,
   ChatStatusLine,
   ChatTypingIndicator,
   UserMessage,
 } from "@/components/ai/chat-ui";
-import { useChatPageScroll } from "@/hooks/use-chat-page-scroll";
 import { SubjectInsightCards } from "@/components/ai/subject-insight-cards";
 import {
   AI_PANEL_DOM_ID,
@@ -71,10 +68,8 @@ type AgentControlProps = {
   pageContext?: string;
   title?: string;
   compact?: boolean;
-  /** Fill parent height (full-screen sheet) with sticky input + scrollable history. */
+  /** Fill parent height (sheet) with inner scroll + pinned composer. */
   fill?: boolean;
-  /** Optional scroll container (modal overlay). Defaults to window. */
-  scrollRootRef?: RefObject<HTMLElement | null>;
   className?: string;
   autoFocus?: boolean;
   onClose?: () => void;
@@ -106,6 +101,8 @@ function localChatFallback(text: string): string {
  * Agent Control — Chat (default) + guided Agent walkthroughs on
  * Today / Coach (Insights) / Analytics only.
  */
+const NEAR_BOTTOM_PX = 120;
+
 export function AgentControl({
   pageContext,
   title = "Agent Control",
@@ -117,7 +114,6 @@ export function AgentControl({
   onDataChanged,
   focus: focusProp,
   focusNonce: focusNonceProp,
-  scrollRootRef,
 }: AgentControlProps) {
   const focusCtx = useAiFocusOptional();
   const focus = focusProp !== undefined ? focusProp : (focusCtx?.focus ?? null);
@@ -134,7 +130,8 @@ export function AgentControl({
       {
         role: "assistant",
         text: w.message,
-        chips: w.chips,
+        // Chips live in the composer “Quick asks” bar — avoid duplicate rows.
+        chips: undefined,
       },
     ];
   });
@@ -149,15 +146,39 @@ export function AgentControl({
   /** Paused guide while answering a mid-flow chat question. */
   const [pausedFlow, setPausedFlow] = useState<AgentFlowState | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const stickToBottom = useRef(true);
+  const initialScrollDone = useRef(false);
   const sendLockUntil = useRef(0);
   const lastAutoRef = useRef<string | null>(null);
 
   const insightCards = focus ? buildInsightCards(focus) : [];
   const guiding = flow.id !== "idle";
-  const { bottomRef } = useChatPageScroll(
-    [lines, busy, insightCards.length],
-    scrollRootRef,
-  );
+
+  const isNearBottom = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight <= NEAR_BOTTOM_PX;
+  }, []);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    const el = listRef.current;
+    if (el) {
+      el.scrollTo({ top: el.scrollHeight, behavior });
+      return;
+    }
+    bottomRef.current?.scrollIntoView({ behavior, block: "end" });
+  }, []);
+
+  useEffect(() => {
+    if (!stickToBottom.current) return;
+    const behavior: ScrollBehavior = initialScrollDone.current
+      ? "smooth"
+      : "auto";
+    scrollToBottom(behavior);
+    initialScrollDone.current = true;
+  }, [lines, busy, insightCards.length, scrollToBottom]);
 
   const refreshStats = useCallback(async () => {
     try {
@@ -507,6 +528,7 @@ export function AgentControl({
     if (now < sendLockUntil.current) return;
     sendLockUntil.current = now + 400;
     if (!raw) setInput("");
+    stickToBottom.current = true;
 
     // Resume a paused guide
     if (/^(continue|continue setup)$/i.test(text) && pausedFlow) {
@@ -653,12 +675,18 @@ export function AgentControl({
     <section
       id={AI_PANEL_DOM_ID}
       className={cn(
-        "rounded-2xl border border-line bg-surface-raised shadow-[var(--shadow-card)]",
+        "flex flex-col bg-surface-raised",
+        fill
+          ? "h-full min-h-0 overflow-hidden"
+          : cn(
+              "rounded-2xl border border-line shadow-[var(--shadow-card)]",
+              compact ? "min-h-[22rem]" : "min-h-[28rem]",
+            ),
         className,
       )}
       aria-label={title}
     >
-      <header className="shrink-0 flex items-start justify-between gap-2 border-b border-line/60 px-3.5 py-3">
+      <header className="shrink-0 flex items-start justify-between gap-2 border-b border-line/60 px-4 py-3 safe-area-pt">
         <div className="min-w-0 flex-1">
           <p className="inline-flex items-center gap-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-brand">
             <Sparkles className="size-3.5" aria-hidden />
@@ -707,13 +735,13 @@ export function AgentControl({
       </header>
 
       {setupHint ? (
-        <p className="mx-3 mt-2 shrink-0 rounded-xl bg-mist/80 px-3 py-2 text-xs text-ink-soft">
+        <p className="mx-4 mt-2 shrink-0 rounded-xl bg-mist/80 px-3 py-2 text-xs text-ink-soft">
           {setupHint}
         </p>
       ) : null}
 
       {insightCards.length > 0 ? (
-        <div className="border-b border-line/50 px-4 py-3">
+        <div className="shrink-0 border-b border-line/50 px-4 py-3">
           <SubjectInsightCards
             cards={insightCards}
             title={
@@ -725,91 +753,107 @@ export function AgentControl({
         </div>
       ) : null}
 
-      <ChatMessageList bottomRef={bottomRef}>
-        {lines.map((line, i) => {
-          if (
-            line.role === "status" &&
-            /^agent mode$/i.test(line.text.trim())
-          ) {
-            return null;
-          }
-          const isLastAssistant =
-            line.role === "assistant" &&
-            i ===
-              lines.reduce(
-                (last, l, idx) => (l.role === "assistant" ? idx : last),
-                -1,
-              );
-          return (
-            <div key={i} className="space-y-2">
-              {line.role === "status" ? (
-                <ChatStatusLine>{line.text}</ChatStatusLine>
-              ) : line.role === "user" ? (
-                <UserMessage text={line.text} />
-              ) : (
-                <AssistantMessage text={line.text} />
-              )}
-              {line.role === "assistant" ? (
-                <ActionRunner
-                  actions={line.actions ?? []}
-                  results={line.results}
-                  pending={line.pending}
-                  busy={busy}
-                  onConfirm={(a) => void confirmPending(a)}
-                  onDismiss={(a) => {
-                    setLines((prev) =>
-                      prev.map((l) =>
-                        l === line
-                          ? {
-                              ...l,
-                              pending: l.pending?.filter((p) => p !== a),
-                            }
-                          : l,
-                      ),
-                    );
-                    setStatus("idle");
-                    setStatusLabel(mode === "agent" ? "Agent ready" : "Ready");
-                  }}
-                />
-              ) : null}
-              {isLastAssistant && line.chips && line.chips.length > 0 ? (
-                <ChatStarterChips
-                  starters={line.chips}
-                  disabled={busy}
-                  onPick={(chip) => void handleSubmit(chip)}
-                />
-              ) : null}
-            </div>
-          );
-        })}
-        {busy ? <ChatTypingIndicator label="Working" /> : null}
-      </ChatMessageList>
+      <div
+        ref={listRef}
+        className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4"
+        onScroll={() => {
+          stickToBottom.current = isNearBottom();
+        }}
+      >
+        <div className="mx-auto w-full max-w-[42rem] space-y-4">
+          {lines.map((line, i) => {
+            if (
+              line.role === "status" &&
+              /^agent mode$/i.test(line.text.trim())
+            ) {
+              return null;
+            }
+            const isLastAssistant =
+              line.role === "assistant" &&
+              i ===
+                lines.reduce(
+                  (last, l, idx) => (l.role === "assistant" ? idx : last),
+                  -1,
+                );
+            // Flow chips stay in-thread; casual starters live above the composer.
+            const showInlineChips =
+              Boolean(guiding || pausedFlow) &&
+              isLastAssistant &&
+              Boolean(line.chips?.length);
+            return (
+              <div key={i} className="space-y-2">
+                {line.role === "status" ? (
+                  <ChatStatusLine>{line.text}</ChatStatusLine>
+                ) : line.role === "user" ? (
+                  <UserMessage text={line.text} />
+                ) : (
+                  <AssistantMessage text={line.text} />
+                )}
+                {line.role === "assistant" ? (
+                  <ActionRunner
+                    actions={line.actions ?? []}
+                    results={line.results}
+                    pending={line.pending}
+                    busy={busy}
+                    onConfirm={(a) => void confirmPending(a)}
+                    onDismiss={(a) => {
+                      setLines((prev) =>
+                        prev.map((l) =>
+                          l === line
+                            ? {
+                                ...l,
+                                pending: l.pending?.filter((p) => p !== a),
+                              }
+                            : l,
+                        ),
+                      );
+                      setStatus("idle");
+                      setStatusLabel(mode === "agent" ? "Agent ready" : "Ready");
+                    }}
+                  />
+                ) : null}
+                {showInlineChips ? (
+                  <ChatStarterChips
+                    starters={line.chips!}
+                    disabled={busy}
+                    onPick={(chip) => void handleSubmit(chip)}
+                  />
+                ) : null}
+              </div>
+            );
+          })}
+          {busy ? <ChatTypingIndicator label="Working" /> : null}
+          <div ref={bottomRef} aria-hidden className="h-px shrink-0" />
+        </div>
+      </div>
 
       {!guiding && !busy ? (
-        <div className="border-t border-line/40 px-4 py-2">
-          <ChatStarterChips
-            starters={mode === "agent" ? agentChips : chatChips}
-            disabled={busy}
-            onPick={(chip) => void handleSubmit(chip)}
-            label={mode === "agent" ? "Agent actions" : "Quick asks"}
-          />
+        <div className="shrink-0 border-t border-line/40 px-4 py-2">
+          <div className="mx-auto max-w-[42rem]">
+            <ChatStarterChips
+              starters={mode === "agent" ? agentChips : chatChips}
+              disabled={busy}
+              onPick={(chip) => void handleSubmit(chip)}
+              label={mode === "agent" ? "Agent actions" : "Quick asks"}
+            />
+          </div>
         </div>
       ) : null}
 
       {error ? (
-        <p className="mx-3 mb-2 shrink-0 rounded-xl bg-risk-danger-bg px-3 py-2 text-xs text-risk-danger">
+        <p className="mx-4 mb-2 shrink-0 rounded-xl bg-risk-danger-bg px-3 py-2 text-xs text-risk-danger">
           {error}
         </p>
       ) : null}
 
-      <ChatComposer>
-        <form
-          className="mx-auto flex max-w-[42rem] gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void handleSubmit();
-          }}
-        >
+      <form
+        className="shrink-0 border-t border-line/70 bg-surface-raised px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void handleSubmit();
+        }}
+      >
+        <div className="mx-auto flex max-w-[42rem] gap-2">
           <input
             ref={inputRef}
             value={input}
@@ -819,14 +863,14 @@ export function AgentControl({
           />
           <button
             type="submit"
-            disabled={!input.trim()}
+            disabled={!input.trim() || busy}
             className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-brand text-white transition duration-75 hover:bg-brand-deep active:scale-95 disabled:opacity-40"
             aria-label="Send"
           >
             <Send className="size-4" aria-hidden />
           </button>
-        </form>
-      </ChatComposer>
+        </div>
+      </form>
     </section>
   );
 }

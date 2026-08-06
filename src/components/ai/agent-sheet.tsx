@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Sparkles } from "lucide-react";
 import { AgentControl } from "@/components/ai/agent-control";
 import { useAiFocusOptional } from "@/components/ai/ai-focus-context";
@@ -15,8 +15,8 @@ type AgentSheetProps = {
 };
 
 /**
- * Full-viewport Agent Control modal (Today / Coach / Analytics only).
- * Phone = near full screen; laptop = large centered dialog.
+ * ChatGPT-style Agent Control — full viewport on phone, large centered
+ * full-height panel on laptop. Messages scroll inside; composer stays pinned.
  */
 export function AgentSheet({
   open,
@@ -26,43 +26,65 @@ export function AgentSheet({
 }: AgentSheetProps) {
   const focusCtx = useAiFocusOptional();
   const config = getPageAiByKey(pageKey);
-  const scrollRootRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   function close() {
     onOpenChange(false);
     focusCtx?.setSheetOpen(false);
   }
 
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") close();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- close closes over latest focusCtx
+  }, [open]);
+
   if (!open) return null;
 
   return (
     <div
-      ref={scrollRootRef}
-      className="fixed inset-0 z-50 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-stretch justify-center bg-ink/45 backdrop-blur-[2px] md:items-center md:p-4"
       role="dialog"
       aria-modal
       aria-label="Agent Control"
     >
+      {/* Desktop click-outside to close */}
       <button
         type="button"
-        className="sticky top-0 min-h-[8vh] w-full bg-ink/40 backdrop-blur-[2px] md:min-h-[12vh]"
+        className="absolute inset-0 hidden md:block"
         aria-label="Close agent"
         onClick={close}
       />
+
       <div
+        ref={panelRef}
         className={cn(
-          "relative -mt-[8vh] min-h-[92vh] bg-surface-raised shadow-xl md:-mt-[12vh] md:mx-auto md:mb-8 md:mt-0 md:max-w-3xl md:min-h-0 md:rounded-2xl md:border md:border-line",
+          "relative z-[1] flex h-dvh w-full max-w-3xl flex-col overflow-hidden bg-surface-raised shadow-xl",
+          "md:h-[min(92dvh,56rem)] md:rounded-2xl md:border md:border-line",
         )}
+        onClick={(e) => e.stopPropagation()}
       >
         <AgentControl
           pageContext={config.pageContext}
           title="Agent Control"
           fill
           autoFocus={!focusCtx?.focus}
-          scrollRootRef={scrollRootRef}
           onClose={close}
           onDataChanged={onDataChanged}
-          className="rounded-none border-0 shadow-none md:rounded-2xl"
+          className="h-full min-h-0 rounded-none border-0 shadow-none md:rounded-2xl"
         />
       </div>
     </div>
