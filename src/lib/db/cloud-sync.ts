@@ -1,6 +1,6 @@
 /**
  * Client-side cloud sync helpers.
- * Dexie remains the offline cache; Supabase (via /api/sync) is source of truth when online.
+ * Supabase (via /api/sync) is the source of truth; Dexie is a read-through cache.
  */
 import { db, getBoundUserId } from "./database";
 import type {
@@ -26,6 +26,16 @@ let pushTimer: ReturnType<typeof setTimeout> | null = null;
 let pushInFlight: Promise<void> | null = null;
 let syncEnabled = true;
 let lifecycleHookRegistered = false;
+
+/** Reset in-memory sync timers (Vitest isolation between tests). */
+export function resetCloudSyncState(): void {
+  if (pushTimer) {
+    clearTimeout(pushTimer);
+    pushTimer = null;
+  }
+  pushInFlight = null;
+  syncEnabled = true;
+}
 
 export function setCloudSyncEnabled(enabled: boolean) {
   syncEnabled = enabled;
@@ -229,6 +239,23 @@ export async function flushCloudPush(): Promise<void> {
   }
 }
 
+/**
+ * Await cloud persistence for attendance-critical writes (marks, settings).
+ * Throws CloudSyncError when push fails so UI can retry instead of silent local-only state.
+ */
+export async function syncCriticalToCloud(): Promise<void> {
+  if (!syncEnabled || !getBoundUserId()) return;
+  // Repository runs in the browser; Vitest Node suites skip (see scheduleCloudPush).
+  if (typeof window === "undefined") return;
+
+  const ok = await pushLocalToCloud();
+  if (!ok) {
+    throw new CloudSyncError(
+      "Could not save to the cloud. Check your connection and try again.",
+    );
+  }
+}
+
 /** Flush pending marks before tab close / hide (best-effort). */
 export function registerCloudPushLifecycle(): void {
   if (lifecycleHookRegistered || typeof window === "undefined") return;
@@ -249,9 +276,29 @@ export function registerCloudPushLifecycle(): void {
 }
 
 /**
- * After binding Dexie for a Clerk user:
- * - If cloud has data → merge with local (attendance union; newer wins) then write.
- * - Else if local has data → upload to cloud (first device / migration).
+ * Pull cloud snapshot and hydrate Dexie (cloud-first read path).
+ * Returns false when cloud is unavailable or empty.
+ */
+export async function pullCloudToLocal(): Promise<boolean> {
+  if (!syncEnabled || !getBoundUserId()) return false;
+
+  const remote = await fetchPull();
+  if (!remote?.hasData) return false;
+
+  setCloudSyncEnabled(false);
+  try {
+    await writeLocalSnapshot(remote.snapshot);
+  } finally {
+    setCloudSyncEnabled(true);
+  }
+  return true;
+}
+
+/**
+ * After binding Dexie for a Clerk user (cloud-first):
+ * 1. Pull cloud when available — merge any unsynced local attendance (newer wins).
+ * 2. Push when cloud is empty but local has data (first device / migration).
+ * 3. Push when merged snapshot has attendance not yet on cloud.
  */
 export async function syncAfterBind(): Promise<"pulled" | "pushed" | "noop" | "skipped"> {
   if (!syncEnabled || !getBoundUserId()) return "skipped";
