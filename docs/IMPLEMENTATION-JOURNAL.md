@@ -690,14 +690,13 @@ Attendly PWA (Clerk sign-in required for app)
       RLS on; no anon/authenticated policies
       Server: service role via getSupabaseAdmin() — never in browser
 
-  Offline cache
+  Offline cache (read-through)
     Dexie AttendlyDB_u_<clerkUserId> (7 stores mirroring cloud)
 
-  Sync
-    UserDatabaseProvider → bindDatabaseForUser → syncAfterBind
-      cloud has data → writeLocalSnapshot (pull)
-      else local has data → pushLocalToCloud
-    repository mutations → scheduleCloudPush (debounced)
+  Sync (cloud-first)
+    UserDatabaseProvider → bindDatabaseForUser → syncAfterBind (pull + merge → Dexie)
+    markAttendance / saveSettings / deleteSubject → syncCriticalToCloud (await push)
+    Other repository mutations → scheduleCloudPush (debounced)
     Settings Import schedule JSON → importBackup → Dexie + rematerialize
       → pushLocalToCloud({ required: true })  // Import → cloud (throws on fail)
     GET /api/sync  ← pull   (auth().userId)
@@ -719,9 +718,9 @@ Attendly PWA (Clerk sign-in required for app)
 | Tenant key | `clerk_user_id` on every table (composite PK with row `id` except settings PK = user) |
 | AuthZ | Clerk on Next.js API; service role bypasses RLS; filter every query by `userId` |
 | Client keys | `NEXT_PUBLIC_SUPABASE_URL` + anon key only (optional); **service role server-only** |
-| Conflict | Full-snapshot replace per user on push (v1 — last writer wins) |
+| Conflict | Full-snapshot replace per user on push; merge on bind (cloud wins ties; attendance newer markedAt wins) |
 | Import path | Dexie write → required Supabase push of schedule+settings+sessions (marks cleared) |
-| Offline | Dexie continues to work; next successful bind/push reconciles |
+| Offline | Dexie read cache; critical writes require cloud (throw if unreachable) |
 
 - **Storage:** Supabase Postgres (cloud) + Dexie (cache). **No demo seed.**
 - **Host:** Vercel — app + `/api/sync` + AI routes (`runtime = "nodejs"`); secrets from `process.env`.
@@ -761,3 +760,42 @@ Env: `.env.local` with `GROQ_API_KEY`, `GEMINI_API_KEY`, Clerk keys, Supabase UR
 - `registerCloudPushLifecycle()` flushes on `pagehide` / tab hide.
 
 **Tests:** `test/unit/db/cloud-sync.test.ts` (merge + bind + flush). `npm run test:unit` + `npm run build` pass.
+
+## 2026-08-06 — Cloud-first production architecture
+
+**Goal:** Supabase is authoritative for all attendance data; Dexie is a read-through cache only.
+
+**Before:** Every repository write went to Dexie first; cloud sync was debounced (800ms). Local could win on timestamp ties during merge. Marks/settings could exist only on-device until debounce fired.
+
+**After:**
+- **Write path:** `markAttendance`, `clearAttendance`, `saveSettings`, and `deleteSubject` call `syncCriticalToCloud()` — await push to `/api/sync` before returning; throw `CloudSyncError` on failure so UI can retry.
+- **Read path:** `syncAfterBind` pulls cloud first, merges unsynced local attendance (newer `markedAt` wins), hydrates Dexie. New `pullCloudToLocal()` for explicit cloud → cache hydration.
+- **Merge:** `mergeSnapshots` tie-breaks favor cloud (remote wins when `updatedAt` equal).
+- **Bulk writes** (subjects, series, materialize, import): still debounced via `scheduleCloudPush`; import keeps required push.
+
+**Dexie still used for:** fast UI reads, offline read cache, legacy DB migration on first bind. Groups feature remains Supabase-only (unchanged).
+
+**Tests:** extended `test/unit/db/cloud-sync.test.ts` (cloud-wins tie, immediate mark push, pullCloudToLocal).
+
+## 2026-08-06 — Optimistic UI for chat + attendance marks
+
+**Goal:** Tap Send / mark Present-Absent feels instant on slow Android phones (WhatsApp-style). Network sync runs in background; no blocking spinners on normal send/mark actions.
+
+**Group chat (`group-chat.tsx`):**
+- Optimistic message append with `pending-*` temp id before POST; input clears immediately.
+- Background POST replaces temp row with server message on success; failure removes bubble, restores draft, shows retry link.
+- Double-send prevented via 400ms debounce ref — Send button never shows loading state.
+
+**Attendance marks (`repository.ts`, `today-screen.tsx`, `day-agenda.tsx`, `mark-actions.tsx`):**
+- `markAttendance` / `clearAttendance` use debounced `scheduleCloudPush()` instead of blocking `syncCriticalToCloud()`.
+- Today / Day agenda update item status in React state synchronously on tap; Dexie write + `refresh()` run after (refresh not awaited for UI).
+- Mark buttons get `active:scale-95` touch feedback.
+
+**AI Coach + Agent Control (`coach-chat.tsx`, `agent-control.tsx`):**
+- User bubble appears before API round-trip; typing indicator while waiting.
+- Composer stays enabled during assistant response; 400ms send debounce prevents double-tap only.
+- Removed send-button spinner; `active:scale-95` on send.
+
+**Cloud sync:** merge-snapshot logic unchanged; `saveSettings` / `deleteSubject` still await critical push. Lifecycle flush on tab hide still pushes pending marks.
+
+**Tests:** `markAttendance cloud push` test expects debounced push (0 immediate, 1 after `flushCloudPush`).

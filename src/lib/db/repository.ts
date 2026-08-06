@@ -1,4 +1,4 @@
-import { scheduleCloudPush } from "./cloud-sync"
+import { scheduleCloudPush, syncCriticalToCloud } from "./cloud-sync"
 import { db } from "./database"
 import {
   SETTINGS_ID,
@@ -24,6 +24,11 @@ function newId(): string {
 
 function touchCloud() {
   scheduleCloudPush()
+}
+
+/** Await cloud push for attendance-critical mutations (marks, settings). */
+async function touchCloudCritical() {
+  await syncCriticalToCloud()
 }
 
 function allTables() {
@@ -64,7 +69,7 @@ export async function saveSettings(
     updatedAt: nowIso(),
   }
   await db.settings.put(next)
-  touchCloud()
+  await touchCloudCritical()
   return next
 }
 
@@ -147,7 +152,7 @@ export async function deleteSubject(id: string): Promise<void> {
       await db.subjects.delete(id)
     },
   )
-  touchCloud()
+  await touchCloudCritical()
 }
 
 // —— Timetable series ——

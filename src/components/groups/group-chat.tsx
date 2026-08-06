@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils/cn";
 
 const POLL_MS = 3000;
 const NEAR_BOTTOM_PX = 80;
+const SEND_DEBOUNCE_MS = 400;
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -23,6 +24,10 @@ function formatTime(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function isOptimisticId(id: string): boolean {
+  return id.startsWith("pending-");
 }
 
 type GroupChatProps = {
@@ -36,15 +41,16 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retryDraft, setRetryDraft] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastCreatedAt = useRef<string | null>(null);
   const stickToBottom = useRef(true);
   const initialScrollDone = useRef(false);
+  const sendLockUntil = useRef(0);
 
   const isNearBottom = useCallback(() => {
     const el = listRef.current;
@@ -135,32 +141,54 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
     stickToBottom.current = isNearBottom();
   }
 
-  async function handleSend(e: React.FormEvent) {
+  function handleSend(e: React.FormEvent) {
     e.preventDefault();
     const text = draft.trim();
-    if (!text || sending) return;
-    setSending(true);
+    if (!text || !userId) return;
+    const now = Date.now();
+    if (now < sendLockUntil.current) return;
+    sendLockUntil.current = now + SEND_DEBOUNCE_MS;
+
+    const tempId = `pending-${crypto.randomUUID()}`;
+    const optimistic: GroupMessage = {
+      id: tempId,
+      groupId,
+      clerkUserId: userId,
+      body: text,
+      createdAt: new Date().toISOString(),
+      senderName: "You",
+      pending: true,
+    };
+
+    setDraft("");
     setError(null);
-    try {
-      const msg = await sendGroupMessageRequest(groupId, text);
-      setDraft("");
-      setMessages((prev) => {
-        if (prev.some((m) => m.id === msg.id)) return prev;
-        return [...prev, msg];
-      });
-      lastCreatedAt.current = msg.createdAt;
-      stickToBottom.current = true;
-      scrollToBottom("smooth");
-    } catch (err) {
-      setError(
-        err instanceof GroupApiError ? err.message : "Could not send message.",
-      );
-    } finally {
-      setSending(false);
-    }
+    setRetryDraft(null);
+    setMessages((prev) => [...prev, optimistic]);
+    stickToBottom.current = true;
+    requestAnimationFrame(() => scrollToBottom("smooth"));
+
+    void (async () => {
+      try {
+        const msg = await sendGroupMessageRequest(groupId, text);
+        setMessages((prev) => {
+          const withoutTemp = prev.filter((m) => m.id !== tempId);
+          if (withoutTemp.some((m) => m.id === msg.id)) return withoutTemp;
+          return [...withoutTemp, msg];
+        });
+        lastCreatedAt.current = msg.createdAt;
+      } catch (err) {
+        const message =
+          err instanceof GroupApiError ? err.message : "Could not send message.";
+        setError(message);
+        setRetryDraft(text);
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        setDraft(text);
+      }
+    })();
   }
 
   async function handleDelete(messageId: string) {
+    if (isOptimisticId(messageId)) return;
     setMenuOpenId(null);
     setDeletingId(messageId);
     setError(null);
@@ -217,6 +245,7 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
               msg.senderName ??
               (mine ? "You" : `Member ${msg.clerkUserId.slice(-4)}`);
             const menuOpen = menuOpenId === msg.id;
+            const optimistic = msg.pending === true;
             return (
               <div
                 key={msg.id}
@@ -233,8 +262,9 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
                 >
                   <p className="text-[0.65rem] font-medium text-mute">
                     {label} · {formatTime(msg.createdAt)}
+                    {optimistic ? " · sending…" : null}
                   </p>
-                  {mine ? (
+                  {mine && !optimistic ? (
                     <div className="relative shrink-0">
                       <button
                         type="button"
@@ -274,10 +304,11 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
                 </div>
                 <p
                   className={cn(
-                    "max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-snug",
+                    "max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-snug transition-opacity",
                     mine
                       ? "bg-brand text-white"
                       : "bg-mist text-ink ring-1 ring-line/60",
+                    optimistic && "opacity-80",
                   )}
                 >
                   {msg.body}
@@ -290,9 +321,24 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
       </div>
 
       {error ? (
-        <p className="mx-3 mb-1 shrink-0 rounded-lg bg-risk-danger-bg px-2 py-1.5 text-xs text-risk-danger">
-          {error}
-        </p>
+        <div className="mx-3 mb-1 shrink-0 space-y-1">
+          <p className="rounded-lg bg-risk-danger-bg px-2 py-1.5 text-xs text-risk-danger">
+            {error}
+          </p>
+          {retryDraft ? (
+            <button
+              type="button"
+              onClick={() => {
+                setDraft(retryDraft);
+                setRetryDraft(null);
+                setError(null);
+              }}
+              className="text-xs font-semibold text-brand hover:underline"
+            >
+              Tap to retry
+            </button>
+          ) : null}
+        </div>
       ) : null}
 
       <form
@@ -308,8 +354,12 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
           enterKeyHint="send"
           className="min-h-11 min-w-0 flex-1 rounded-xl border border-line bg-surface px-3 py-2 text-base text-ink outline-none ring-brand/30 focus:ring-2 sm:text-sm"
         />
-        <Button type="submit" disabled={sending || !draft.trim()}>
-          {sending ? "…" : "Send"}
+        <Button
+          type="submit"
+          disabled={!draft.trim()}
+          className="transition-transform duration-75 active:scale-95"
+        >
+          Send
         </Button>
       </form>
     </div>
