@@ -139,7 +139,7 @@ export function GroupDetailPage() {
 
   return (
     <>
-      <main className="mx-auto w-full max-w-3xl px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-6 sm:px-6 lg:px-8">
+      <main className="mx-auto w-full max-w-3xl px-4 pb-[calc(var(--nav-total-h)+5.5rem)] pt-6 sm:px-6 lg:px-8">
         <Link
           href="/groups"
           className="mb-3 inline-flex min-h-10 shrink-0 items-center gap-1.5 text-sm font-medium text-mute hover:text-ink"

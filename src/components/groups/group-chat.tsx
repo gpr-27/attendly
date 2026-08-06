@@ -4,8 +4,8 @@ import { useAuth } from "@clerk/nextjs";
 import { MoreVertical, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChatComposer, ChatMessageList } from "@/components/ai/chat-ui";
-import { useChatPageScroll } from "@/hooks/use-chat-page-scroll";
 import { Button } from "@/components/ui/button";
+import { useChatPageScroll } from "@/hooks/use-chat-page-scroll";
 import {
   deleteGroupMessageRequest,
   fetchGroupMessages,
@@ -16,7 +16,6 @@ import type { GroupMessage } from "@/lib/groups/types";
 import { cn } from "@/lib/utils/cn";
 
 const POLL_MS = 3000;
-const SEND_DEBOUNCE_MS = 400;
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -25,10 +24,6 @@ function formatTime(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function isOptimisticId(id: string): boolean {
-  return id.startsWith("pending-");
 }
 
 type GroupChatProps = {
@@ -42,21 +37,23 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [retryDraft, setRetryDraft] = useState<string | null>(null);
-  const sendLockUntil = useRef(0);
   const lastCreatedAt = useRef<string | null>(null);
+  const initialScrollDone = useRef(false);
   const { bottomRef, scrollToBottom, stickToBottom } = useChatPageScroll([
-    enabled,
-    loading,
     messages.length,
+    loading,
+    sending,
   ]);
 
   const loadInitial = useCallback(async () => {
     setLoading(true);
     setError(null);
+    initialScrollDone.current = false;
+    stickToBottom.current = true;
     try {
       const result = await fetchGroupMessages(groupId, { limit: 50 });
       setMessages(result.messages);
@@ -71,16 +68,16 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
     } finally {
       setLoading(false);
     }
-  }, [groupId]);
+  }, [groupId, stickToBottom]);
 
   const pollNew = useCallback(async () => {
     if (!lastCreatedAt.current) return;
+    const wasNearBottom = stickToBottom.current;
     try {
       const result = await fetchGroupMessages(groupId, {
         after: lastCreatedAt.current,
       });
       if (result.messages.length === 0) return;
-      const wasNearBottom = stickToBottom.current;
       setMessages((prev) => {
         const ids = new Set(prev.map((m) => m.id));
         const merged = [...prev];
@@ -115,54 +112,32 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
     return () => window.removeEventListener("click", close);
   }, [menuOpenId]);
 
-  function handleSend(e: React.FormEvent) {
+  async function handleSend(e: React.FormEvent) {
     e.preventDefault();
     const text = draft.trim();
-    if (!text || !userId) return;
-    const now = Date.now();
-    if (now < sendLockUntil.current) return;
-    sendLockUntil.current = now + SEND_DEBOUNCE_MS;
-
-    const tempId = `pending-${crypto.randomUUID()}`;
-    const optimistic: GroupMessage = {
-      id: tempId,
-      groupId,
-      clerkUserId: userId,
-      body: text,
-      createdAt: new Date().toISOString(),
-      senderName: "You",
-      pending: true,
-    };
-
-    setDraft("");
+    if (!text || sending) return;
+    setSending(true);
     setError(null);
-    setRetryDraft(null);
-    setMessages((prev) => [...prev, optimistic]);
-    stickToBottom.current = true;
-    requestAnimationFrame(() => scrollToBottom("smooth"));
-
-    void (async () => {
-      try {
-        const msg = await sendGroupMessageRequest(groupId, text);
-        setMessages((prev) => {
-          const withoutTemp = prev.filter((m) => m.id !== tempId);
-          if (withoutTemp.some((m) => m.id === msg.id)) return withoutTemp;
-          return [...withoutTemp, msg];
-        });
-        lastCreatedAt.current = msg.createdAt;
-      } catch (err) {
-        const message =
-          err instanceof GroupApiError ? err.message : "Could not send message.";
-        setError(message);
-        setRetryDraft(text);
-        setMessages((prev) => prev.filter((m) => m.id !== tempId));
-        setDraft(text);
-      }
-    })();
+    try {
+      const msg = await sendGroupMessageRequest(groupId, text);
+      setDraft("");
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === msg.id)) return prev;
+        return [...prev, msg];
+      });
+      lastCreatedAt.current = msg.createdAt;
+      stickToBottom.current = true;
+      scrollToBottom("smooth");
+    } catch (err) {
+      setError(
+        err instanceof GroupApiError ? err.message : "Could not send message.",
+      );
+    } finally {
+      setSending(false);
+    }
   }
 
   async function handleDelete(messageId: string) {
-    if (isOptimisticId(messageId)) return;
     setMenuOpenId(null);
     setDeletingId(messageId);
     setError(null);
@@ -202,7 +177,8 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
         </p>
       </div>
 
-      <ChatMessageList bottomRef={bottomRef}>
+      <div aria-live="polite">
+        <ChatMessageList bottomRef={bottomRef}>
         {loading ? (
           <p className="text-sm text-mute">Loading chat…</p>
         ) : messages.length === 0 ? (
@@ -214,108 +190,84 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
               msg.senderName ??
               (mine ? "You" : `Member ${msg.clerkUserId.slice(-4)}`);
             const menuOpen = menuOpenId === msg.id;
-            const optimistic = msg.pending === true;
             return (
               <div
                 key={msg.id}
                 className={cn(
-                  "group/msg flex w-full",
-                  mine ? "justify-end" : "justify-start",
+                  "group/msg flex w-full flex-col",
+                  mine ? "items-end" : "items-start",
                 )}
               >
                 <div
                   className={cn(
-                    "flex min-w-0 max-w-[min(92%,32rem)] flex-col gap-0.5",
-                    mine ? "items-end" : "items-start",
+                    "mb-1 flex max-w-[min(92%,32rem)] items-center gap-1 px-1",
+                    mine ? "flex-row-reverse" : "flex-row",
                   )}
                 >
-                  <div
-                    className={cn(
-                      "flex items-center gap-1",
-                      mine ? "flex-row-reverse" : "flex-row",
-                    )}
-                  >
-                    <p className="px-1 text-[0.6875rem] font-medium text-mute">
-                      {label} · {formatTime(msg.createdAt)}
-                      {optimistic ? " · sending…" : null}
-                    </p>
-                    {mine && !optimistic ? (
-                      <div className="relative shrink-0">
-                        <button
-                          type="button"
-                          aria-label="Message options"
-                          aria-expanded={menuOpen}
-                          disabled={deletingId === msg.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMenuOpenId(menuOpen ? null : msg.id);
-                          }}
-                          className={cn(
-                            "flex min-h-7 min-w-7 items-center justify-center rounded-md text-mute transition-opacity hover:bg-mist hover:text-ink",
-                            menuOpen
-                              ? "opacity-100"
-                              : "opacity-0 group-hover/msg:opacity-100 focus:opacity-100",
-                          )}
-                        >
-                          <MoreVertical className="size-3.5" aria-hidden />
-                        </button>
-                        {menuOpen ? (
-                          <div
-                            role="menu"
-                            className="absolute top-full z-10 mt-1 min-w-[7rem] rounded-lg border border-line bg-surface py-1 shadow-lg"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <button
-                              type="button"
-                              role="menuitem"
-                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-risk-danger hover:bg-risk-danger-bg"
-                              onClick={() => void handleDelete(msg.id)}
-                            >
-                              <Trash2 className="size-3.5" aria-hidden />
-                              Delete
-                            </button>
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                  <p
-                    className={cn(
-                      "rounded-2xl px-4 py-2.5 text-[0.9375rem] leading-[1.6] shadow-[var(--shadow-card)] transition-opacity",
-                      mine
-                        ? "rounded-br-md bg-brand text-white"
-                        : "rounded-bl-md border border-line/70 bg-surface-raised text-ink",
-                      optimistic && "opacity-80",
-                    )}
-                  >
-                    {msg.body}
+                  <p className="text-[0.6875rem] font-medium text-mute">
+                    {label} · {formatTime(msg.createdAt)}
                   </p>
+                  {mine ? (
+                    <div className="relative shrink-0">
+                      <button
+                        type="button"
+                        aria-label="Message options"
+                        aria-expanded={menuOpen}
+                        disabled={deletingId === msg.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuOpenId(menuOpen ? null : msg.id);
+                        }}
+                        className={cn(
+                          "flex min-h-7 min-w-7 items-center justify-center rounded-md text-mute transition-opacity hover:bg-mist hover:text-ink",
+                          menuOpen
+                            ? "opacity-100"
+                            : "opacity-0 group-hover/msg:opacity-100 focus:opacity-100",
+                        )}
+                      >
+                        <MoreVertical className="size-3.5" aria-hidden />
+                      </button>
+                      {menuOpen ? (
+                        <div
+                          role="menu"
+                          className="absolute top-full z-10 mt-1 min-w-[7rem] rounded-lg border border-line bg-surface py-1 shadow-lg"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-risk-danger hover:bg-risk-danger-bg"
+                            onClick={() => void handleDelete(msg.id)}
+                          >
+                            <Trash2 className="size-3.5" aria-hidden />
+                            Delete
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
+                <p
+                  className={cn(
+                    "max-w-[min(92%,32rem)] rounded-2xl px-4 py-2.5 text-[0.9375rem] leading-[1.6] shadow-[var(--shadow-card)]",
+                    mine
+                      ? "rounded-br-md bg-brand text-white"
+                      : "rounded-bl-md border border-line/70 bg-surface-raised text-ink",
+                  )}
+                >
+                  {msg.body}
+                </p>
               </div>
             );
           })
         )}
-      </ChatMessageList>
+        </ChatMessageList>
+      </div>
 
       {error ? (
-        <div className="mx-3 mb-1 space-y-1">
-          <p className="rounded-lg bg-risk-danger-bg px-2 py-1.5 text-xs text-risk-danger">
-            {error}
-          </p>
-          {retryDraft ? (
-            <button
-              type="button"
-              onClick={() => {
-                setDraft(retryDraft);
-                setRetryDraft(null);
-                setError(null);
-              }}
-              className="text-xs font-semibold text-brand hover:underline"
-            >
-              Tap to retry
-            </button>
-          ) : null}
-        </div>
+        <p className="mx-4 mb-1 rounded-lg bg-risk-danger-bg px-2 py-1.5 text-xs text-risk-danger">
+          {error}
+        </p>
       ) : null}
 
       <ChatComposer>
@@ -330,14 +282,10 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
             placeholder="Message the group…"
             maxLength={2000}
             enterKeyHint="send"
-            className="min-h-11 min-w-0 flex-1 rounded-full border border-line bg-surface px-4 text-sm text-ink outline-none ring-brand/30 placeholder:text-mute focus:ring-2"
+            className="min-h-11 min-w-0 flex-1 rounded-full border border-line bg-surface px-4 py-2 text-base text-ink outline-none ring-brand/30 focus:ring-2 sm:text-sm"
           />
-          <Button
-            type="submit"
-            disabled={!draft.trim()}
-            className="rounded-full transition-transform duration-75 active:scale-95"
-          >
-            Send
+          <Button type="submit" disabled={sending || !draft.trim()}>
+            {sending ? "…" : "Send"}
           </Button>
         </form>
       </ChatComposer>

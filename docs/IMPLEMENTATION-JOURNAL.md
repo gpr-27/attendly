@@ -761,6 +761,26 @@ Env: `.env.local` with `GROQ_API_KEY`, `GEMINI_API_KEY`, Clerk keys, Supabase UR
 
 **Tests:** `test/unit/db/cloud-sync.test.ts` (merge + bind + flush). `npm run test:unit` + `npm run build` pass.
 
+## 2026-08-06 — Premium AI chat UI + native page scroll
+
+**Problem:** Coach/agent chat bubbles looked flat and cramped; message lists used WhatsApp-style inner `overflow-y` boxes instead of natural page scroll.
+
+**UI polish:**
+- New shared `src/components/ai/chat-ui.tsx` — premium bubbles (user teal right, assistant surface left + bot avatar), lightweight markdown prose, copy button on assistant replies, typing dots, empty states, starter chips, Agent Q&A / Actions tabs.
+- `globals.css` — `.ai-chat-prose` styles for lists, inline code, fenced blocks; animated typing dots.
+- Applied to `coach-chat.tsx`, `ai-assistant-panel.tsx`, `agent-control.tsx`.
+
+**Scroll fix (both AI + Groups):**
+- Removed fixed-height inner scroll traps (`max-h-*`, `flex-1 min-h-0 overflow-y-auto` on message lists).
+- Messages flow in document order; page (or modal overlay) scrolls natively.
+- `useChatPageScroll` hook — bottom anchor + `scrollIntoView` when near bottom; optional `scrollRootRef` for modals.
+- `ChatComposer` — sticky bottom bar with safe-area padding.
+- Groups: `group-chat.tsx` + `group-detail-page.tsx` use same pattern; delete/members unchanged.
+
+**Modals:** `agent-sheet.tsx` + `ai-fab.tsx` — single `overflow-y-auto` on overlay (not nested message box); pass `scrollRootRef` to panels.
+
+`npm run build` pass.
+
 ## 2026-08-06 — Cloud-first production architecture
 
 **Goal:** Supabase is authoritative for all attendance data; Dexie is a read-through cache only.
