@@ -21,6 +21,7 @@ export {
   syncAfterBind,
   scheduleCloudPush,
   flushCloudPush,
+  registerCloudPushLifecycle,
   pushLocalToCloud,
   readLocalSnapshot,
   writeLocalSnapshot,

@@ -749,3 +749,15 @@ Env: `.env.local` with `GROQ_API_KEY`, `GEMINI_API_KEY`, Clerk keys, Supabase UR
 - Production live: https://attendly-navy.vercel.app
 - Dashboard: https://vercel.com/praneethg1830-7293s-projects/attendly
 - Env (Production + Preview): AI keys, Clerk keys, and Supabase `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. Redeploy after adding keys.
+
+## 2026-08-06 — Fix attendance marks lost on reload (cloud sync)
+
+**Root cause:** On every sign-in / page reload, `syncAfterBind` pulled the cloud snapshot and **replaced** local Dexie wholesale. Marks are only pushed on an 800ms debounce, so rapid marking or reload-before-push left cloud stale. Worse, `flushCloudPush` waited for an in-flight push then **returned without pushing again**, dropping marks that landed mid-push.
+
+**Fix:**
+- `mergeSnapshots()` unions attendance by `sessionId` (newer `markedAt` wins) and keeps referenced sessions.
+- `syncAfterBind` merges remote + local instead of blind overwrite; pushes merged attendance when local had unsynced marks.
+- `flushCloudPush` loops until debounced work is drained (no early return after in-flight).
+- `registerCloudPushLifecycle()` flushes on `pagehide` / tab hide.
+
+**Tests:** `test/unit/db/cloud-sync.test.ts` (merge + bind + flush). `npm run test:unit` + `npm run build` pass.

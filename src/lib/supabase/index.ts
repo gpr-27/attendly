@@ -8,3 +8,7 @@ export {
   snapshotHasData,
 } from "./snapshot";
 export { pullCloudSnapshot, pushCloudSnapshot } from "./sync-server";
+export {
+  localHasUnsyncedAttendance,
+  mergeSnapshots,
+} from "./merge-snapshot";

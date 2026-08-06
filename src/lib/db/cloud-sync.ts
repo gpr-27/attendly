@@ -13,6 +13,10 @@ import type {
   TimetableSeries,
 } from "./types";
 import {
+  localHasUnsyncedAttendance,
+  mergeSnapshots,
+} from "@/lib/supabase/merge-snapshot";
+import {
   emptySnapshot,
   snapshotHasData,
   type CloudSnapshot,
@@ -21,6 +25,7 @@ import {
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
 let pushInFlight: Promise<void> | null = null;
 let syncEnabled = true;
+let lifecycleHookRegistered = false;
 
 export function setCloudSyncEnabled(enabled: boolean) {
   syncEnabled = enabled;
@@ -200,46 +205,88 @@ export function scheduleCloudPush(delayMs = 800): void {
 
 export async function flushCloudPush(): Promise<void> {
   if (!syncEnabled || !getBoundUserId()) return;
-  if (pushInFlight) {
-    await pushInFlight;
-    return;
+
+  // Repeat until no debounced work or local mutations landed mid-push.
+  for (;;) {
+    while (pushInFlight) {
+      await pushInFlight;
+    }
+
+    if (pushTimer) {
+      clearTimeout(pushTimer);
+      pushTimer = null;
+    }
+
+    const task = pushLocalToCloud().then(() => undefined);
+    pushInFlight = task;
+    try {
+      await task;
+    } finally {
+      if (pushInFlight === task) pushInFlight = null;
+    }
+
+    if (!pushTimer) break;
   }
-  pushInFlight = pushLocalToCloud().then(() => undefined);
-  try {
-    await pushInFlight;
-  } finally {
-    pushInFlight = null;
-  }
+}
+
+/** Flush pending marks before tab close / hide (best-effort). */
+export function registerCloudPushLifecycle(): void {
+  if (lifecycleHookRegistered || typeof window === "undefined") return;
+  lifecycleHookRegistered = true;
+
+  const flushPending = () => {
+    if (pushTimer) {
+      clearTimeout(pushTimer);
+      pushTimer = null;
+    }
+    void flushCloudPush();
+  };
+
+  window.addEventListener("pagehide", flushPending);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushPending();
+  });
 }
 
 /**
  * After binding Dexie for a Clerk user:
- * - If cloud has data → replace local Dexie (cloud wins).
+ * - If cloud has data → merge with local (attendance union; newer wins) then write.
  * - Else if local has data → upload to cloud (first device / migration).
  */
 export async function syncAfterBind(): Promise<"pulled" | "pushed" | "noop" | "skipped"> {
   if (!syncEnabled || !getBoundUserId()) return "skipped";
 
-  const remote = await fetchPull();
-  if (!remote) return "skipped";
+  if (pushTimer) {
+    clearTimeout(pushTimer);
+    pushTimer = null;
+  }
 
   const local = await readLocalSnapshot();
   const localHas = snapshotHasData(local);
 
+  const remote = await fetchPull();
+  if (!remote) {
+    if (localHas) await flushCloudPush();
+    return "skipped";
+  }
+
   if (remote.hasData) {
-    // Avoid stomping while applying remote → local.
+    const merged = mergeSnapshots(remote.snapshot, local);
     setCloudSyncEnabled(false);
     try {
-      await writeLocalSnapshot(remote.snapshot);
+      await writeLocalSnapshot(merged);
     } finally {
       setCloudSyncEnabled(true);
+    }
+    if (localHasUnsyncedAttendance(local, remote.snapshot)) {
+      await flushCloudPush();
     }
     return "pulled";
   }
 
   if (localHas) {
-    const ok = await pushLocalToCloud();
-    return ok ? "pushed" : "skipped";
+    await flushCloudPush();
+    return "pushed";
   }
 
   return "noop";
