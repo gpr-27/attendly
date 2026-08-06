@@ -157,7 +157,7 @@ export function InsightsPage() {
         <PageHeader
           eyebrow="Rules first"
           title="Coach"
-          description="Tap a subject for its schedule + marks report. Agent opens in a full-screen popup."
+          description="Tap a subject for its schedule + marks report. Agent opens as a full-screen chat."
         />
         <AgentFab variant="pill" onClick={() => setAgentOpen(true)} />
       </div>
