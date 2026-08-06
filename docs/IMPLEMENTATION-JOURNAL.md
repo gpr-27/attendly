@@ -799,3 +799,21 @@ Env: `.env.local` with `GROQ_API_KEY`, `GEMINI_API_KEY`, Clerk keys, Supabase UR
 **Cloud sync:** merge-snapshot logic unchanged; `saveSettings` / `deleteSubject` still await critical push. Lifecycle flush on tab hide still pushes pending marks.
 
 **Tests:** `markAttendance cloud push` test expects debounced push (0 immediate, 1 after `flushCloudPush`).
+
+## 2026-08-06 — Full-page chat scroll (all surfaces)
+
+**Problem:** Chat UIs used inner `overflow-y-auto` message boxes (WhatsApp-style) instead of natural document scroll — especially broken on mobile and group chat.
+
+**Pattern (shared):**
+- `ChatMessageList` — messages in normal document flow; bottom anchor ref only.
+- `ChatComposer` — `sticky bottom-0` with safe-area padding; page/panel grows with history.
+- `useChatPageScroll(deps, scrollRoot?)` — listens on `window` or modal overlay; auto-scrolls via `scrollIntoView` / `window.scrollTo` only when user is near bottom (~120px).
+- Modals (`AiFab`, `AgentSheet`) — `overflow-y-auto` on the **overlay**, not the message list; pass `scrollRootRef` into panels.
+
+**Files:** `use-chat-page-scroll.ts`, `chat-ui.tsx`, `globals.css` (`.ai-chat-prose`), `coach-chat.tsx`, `ai-assistant-panel.tsx`, `agent-control.tsx`, `group-chat.tsx`, `group-detail-page.tsx`, `ai-fab.tsx`, `agent-sheet.tsx`.
+
+**Removed:** Inner `listRef.scrollTop`, `min-h-0 flex-1 overflow-y-auto` on message lists, `min-h-[100dvh]` flex traps on group detail page.
+
+**Verify:** Long chat history → browser/finger scrolls entire page; composer stays sticky; new messages auto-scroll only when already near bottom.
+
+**Build:** `npm run build` pass.

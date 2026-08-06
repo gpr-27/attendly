@@ -277,13 +277,14 @@ export function CoachChat({
         </p>
       ) : null}
 
-      <form
-        className="flex shrink-0 gap-2 border-t border-line/70 p-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void send();
-        }}
-      >
+      <ChatComposer>
+        <form
+          className="mx-auto flex max-w-[42rem] gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void send();
+          }}
+        >
         <input
           ref={inputRef}
           className="min-h-11 flex-1 rounded-full border border-line bg-surface px-4 text-sm text-ink outline-none ring-brand/30 placeholder:text-mute focus:ring-2"
@@ -311,7 +312,8 @@ export function CoachChat({
         >
           <Send className="size-4" aria-hidden />
         </button>
-      </form>
+        </form>
+      </ChatComposer>
     </section>
   );
 }

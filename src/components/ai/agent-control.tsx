@@ -1,20 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Send, Sparkles, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { Send, Sparkles, X } from "lucide-react";
 import {
   ActionRunner,
   splitAndRunActions,
 } from "@/components/ai/action-runner";
 import {
-  AgentModeTabs,
   AssistantMessage,
+  ChatComposer,
   ChatMessageList,
   ChatStarterChips,
   ChatStatusLine,
   ChatTypingIndicator,
   UserMessage,
 } from "@/components/ai/chat-ui";
+import { useChatPageScroll } from "@/hooks/use-chat-page-scroll";
 import { SubjectInsightCards } from "@/components/ai/subject-insight-cards";
 import {
   AI_PANEL_DOM_ID,
@@ -71,6 +72,8 @@ type AgentControlProps = {
   compact?: boolean;
   /** Fill parent height (full-screen sheet) with sticky input + scrollable history. */
   fill?: boolean;
+  /** Optional scroll container (modal overlay). Defaults to window. */
+  scrollRootRef?: RefObject<HTMLElement | null>;
   className?: string;
   autoFocus?: boolean;
   onClose?: () => void;
@@ -113,6 +116,7 @@ export function AgentControl({
   onDataChanged,
   focus: focusProp,
   focusNonce: focusNonceProp,
+  scrollRootRef,
 }: AgentControlProps) {
   const focusCtx = useAiFocusOptional();
   const focus = focusProp !== undefined ? focusProp : (focusCtx?.focus ?? null);
@@ -143,13 +147,16 @@ export function AgentControl({
   const [mode, setMode] = useState<PanelMode>("chat");
   /** Paused guide while answering a mid-flow chat question. */
   const [pausedFlow, setPausedFlow] = useState<AgentFlowState | null>(null);
-  const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const sendLockUntil = useRef(0);
   const lastAutoRef = useRef<string | null>(null);
 
   const insightCards = focus ? buildInsightCards(focus) : [];
   const guiding = flow.id !== "idle";
+  const { bottomRef } = useChatPageScroll(
+    [lines, busy, insightCards.length],
+    scrollRootRef,
+  );
 
   const refreshStats = useCallback(async () => {
     try {
@@ -173,11 +180,6 @@ export function AgentControl({
   useEffect(() => {
     if (autoFocus) inputRef.current?.focus();
   }, [autoFocus]);
-
-  useEffect(() => {
-    const el = listRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [lines, busy, insightCards.length]);
 
   useEffect(() => {
     let cancelled = false;
@@ -650,12 +652,7 @@ export function AgentControl({
     <section
       id={AI_PANEL_DOM_ID}
       className={cn(
-        "flex flex-col rounded-2xl border border-line bg-surface-raised shadow-[var(--shadow-card)]",
-        fill
-          ? "h-full min-h-0 overflow-hidden"
-          : compact
-            ? "min-h-[22rem]"
-            : "min-h-[28rem]",
+        "rounded-2xl border border-line bg-surface-raised shadow-[var(--shadow-card)]",
         className,
       )}
       aria-label={title}
@@ -741,11 +738,8 @@ export function AgentControl({
         </p>
       ) : null}
 
-      <div
-        ref={listRef}
-        className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain px-3 py-3"
-      >
-        {insightCards.length > 0 ? (
+      {insightCards.length > 0 ? (
+        <div className="border-b border-line/50 px-4 py-3">
           <SubjectInsightCards
             cards={insightCards}
             title={
@@ -754,16 +748,17 @@ export function AgentControl({
                 : "Insights"
             }
           />
-        ) : null}
+        </div>
+      ) : null}
+
+      <ChatMessageList bottomRef={bottomRef}>
         {lines.map((line, i) => {
-          // Hide redundant mode banners that used to spam history.
           if (
             line.role === "status" &&
             /^agent mode$/i.test(line.text.trim())
           ) {
             return null;
           }
-          // Only show chips on the latest assistant line to avoid repetition.
           const isLastAssistant =
             line.role === "assistant" &&
             i ===
@@ -772,22 +767,13 @@ export function AgentControl({
                 -1,
               );
           return (
-            <div key={i} className="space-y-1.5">
+            <div key={i} className="space-y-2">
               {line.role === "status" ? (
-                <p className="text-center text-[0.65rem] font-semibold uppercase tracking-wide text-mute">
-                  {line.text}
-                </p>
+                <ChatStatusLine>{line.text}</ChatStatusLine>
+              ) : line.role === "user" ? (
+                <UserMessage text={line.text} />
               ) : (
-                <div
-                  className={cn(
-                    "max-w-[95%] rounded-2xl px-3 py-2 text-sm leading-snug",
-                    line.role === "user"
-                      ? "ml-auto bg-brand text-white"
-                      : "bg-mist/70 text-ink",
-                  )}
-                >
-                  {line.text}
-                </div>
+                <AssistantMessage text={line.text} />
               )}
               {line.role === "assistant" ? (
                 <ActionRunner
@@ -813,45 +799,26 @@ export function AgentControl({
                 />
               ) : null}
               {isLastAssistant && line.chips && line.chips.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {line.chips.map((chip) => (
-                    <button
-                      key={chip}
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void handleSubmit(chip)}
-                      className="min-h-10 rounded-full border border-brand/25 bg-brand/5 px-3 text-xs font-semibold text-brand hover:bg-brand/10 disabled:opacity-50"
-                    >
-                      {chip}
-                    </button>
-                  ))}
-                </div>
+                <ChatStarterChips
+                  starters={line.chips}
+                  disabled={busy}
+                  onPick={(chip) => void handleSubmit(chip)}
+                />
               ) : null}
             </div>
           );
         })}
-        {busy ? (
-          <p className="inline-flex items-center gap-1.5 text-xs text-mute">
-            <Loader2 className="size-3.5 animate-spin" aria-hidden />
-            Working…
-          </p>
-        ) : null}
-      </div>
+        {busy ? <ChatTypingIndicator label="Working" /> : null}
+      </ChatMessageList>
 
-      {/* Sticky starter chips for current mode — not duplicated into history */}
       {!guiding && !busy ? (
-        <div className="shrink-0 flex flex-wrap gap-1.5 border-t border-line/40 px-3 py-2">
-          {(mode === "agent" ? agentChips : chatChips).map((chip) => (
-            <button
-              key={chip}
-              type="button"
-              disabled={busy}
-              onClick={() => void handleSubmit(chip)}
-              className="min-h-10 rounded-full border border-line bg-mist/50 px-3 text-xs font-semibold text-ink-soft hover:bg-mist disabled:opacity-50"
-            >
-              {chip}
-            </button>
-          ))}
+        <div className="border-t border-line/40 px-4 py-2">
+          <ChatStarterChips
+            starters={mode === "agent" ? agentChips : chatChips}
+            disabled={busy}
+            onPick={(chip) => void handleSubmit(chip)}
+            label={mode === "agent" ? "Agent actions" : "Quick asks"}
+          />
         </div>
       ) : null}
 
@@ -861,29 +828,31 @@ export function AgentControl({
         </p>
       ) : null}
 
-      <form
-        className="shrink-0 flex items-center gap-2 border-t border-line/60 p-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void handleSubmit();
-        }}
-      >
-        <input
-          ref={inputRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={placeholder}
-          className="min-h-11 flex-1 rounded-xl border border-line bg-surface px-3 text-sm text-ink outline-none ring-brand/30 placeholder:text-mute focus:ring-2"
-        />
-        <button
-          type="submit"
-          disabled={!input.trim()}
-          className="inline-flex size-11 items-center justify-center rounded-xl bg-brand text-white transition duration-75 active:scale-95 disabled:opacity-40"
-          aria-label="Send"
+      <ChatComposer>
+        <form
+          className="mx-auto flex max-w-[42rem] gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleSubmit();
+          }}
         >
-          <Send className="size-4" aria-hidden />
-        </button>
-      </form>
+          <input
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={placeholder}
+            className="min-h-11 flex-1 rounded-full border border-line bg-surface px-4 text-sm text-ink outline-none ring-brand/30 placeholder:text-mute focus:ring-2"
+          />
+          <button
+            type="submit"
+            disabled={!input.trim()}
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-brand text-white transition duration-75 hover:bg-brand-deep active:scale-95 disabled:opacity-40"
+            aria-label="Send"
+          >
+            <Send className="size-4" aria-hidden />
+          </button>
+        </form>
+      </ChatComposer>
     </section>
   );
 }

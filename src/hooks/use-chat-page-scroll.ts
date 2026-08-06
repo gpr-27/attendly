@@ -42,9 +42,21 @@ export function useChatPageScroll(
 
   const scrollToBottom = useCallback(
     (behavior: ScrollBehavior = "smooth") => {
-      bottomRef.current?.scrollIntoView({ behavior, block: "end" });
+      const root = scrollRoot?.current;
+      if (root) {
+        root.scrollTo({ top: root.scrollHeight, behavior });
+        return;
+      }
+      if (bottomRef.current) {
+        bottomRef.current.scrollIntoView({ behavior, block: "end" });
+        return;
+      }
+      window.scrollTo({
+        top: document.documentElement.scrollHeight,
+        behavior,
+      });
     },
-    [],
+    [scrollRoot],
   );
 
   useEffect(() => {
