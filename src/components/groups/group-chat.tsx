@@ -3,9 +3,7 @@
 import { useAuth } from "@clerk/nextjs";
 import { MoreVertical, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChatComposer, ChatMessageList } from "@/components/ai/chat-ui";
 import { Button } from "@/components/ui/button";
-import { useChatPageScroll } from "@/hooks/use-chat-page-scroll";
 import {
   deleteGroupMessageRequest,
   fetchGroupMessages,
@@ -16,6 +14,7 @@ import type { GroupMessage } from "@/lib/groups/types";
 import { cn } from "@/lib/utils/cn";
 
 const POLL_MS = 3000;
+const NEAR_BOTTOM_PX = 120;
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -42,12 +41,25 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const lastCreatedAt = useRef<string | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const stickToBottom = useRef(true);
   const initialScrollDone = useRef(false);
-  const { bottomRef, scrollToBottom, stickToBottom } = useChatPageScroll([
-    messages.length,
-    loading,
-    sending,
-  ]);
+
+  const isNearBottom = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight <= NEAR_BOTTOM_PX;
+  }, []);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    const el = listRef.current;
+    if (el) {
+      el.scrollTo({ top: el.scrollHeight, behavior });
+      return;
+    }
+    bottomRef.current?.scrollIntoView({ behavior, block: "end" });
+  }, []);
 
   const loadInitial = useCallback(async () => {
     setLoading(true);
@@ -68,11 +80,11 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
     } finally {
       setLoading(false);
     }
-  }, [groupId, stickToBottom]);
+  }, [groupId]);
 
   const pollNew = useCallback(async () => {
     if (!lastCreatedAt.current) return;
-    const wasNearBottom = stickToBottom.current;
+    const wasNearBottom = isNearBottom();
     try {
       const result = await fetchGroupMessages(groupId, {
         after: lastCreatedAt.current,
@@ -92,12 +104,22 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
     } catch {
       /* polling is best-effort */
     }
-  }, [groupId, stickToBottom]);
+  }, [groupId, isNearBottom]);
 
   useEffect(() => {
     if (!enabled) return;
     void loadInitial();
   }, [enabled, loadInitial]);
+
+  useEffect(() => {
+    if (!enabled || loading) return;
+    if (!stickToBottom.current) return;
+    const behavior: ScrollBehavior = initialScrollDone.current
+      ? "smooth"
+      : "auto";
+    scrollToBottom(behavior);
+    initialScrollDone.current = true;
+  }, [enabled, loading, messages.length, scrollToBottom]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -111,6 +133,10 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
     window.addEventListener("click", close);
     return () => window.removeEventListener("click", close);
   }, [menuOpenId]);
+
+  function handleListScroll() {
+    stickToBottom.current = isNearBottom();
+  }
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -167,18 +193,22 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
   return (
     <div
       className={cn(
-        "rounded-2xl border border-line bg-surface-raised shadow-[var(--shadow-card)]",
+        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface-raised shadow-[var(--shadow-card)]",
         className,
       )}
     >
-      <div className="border-b border-line px-4 py-2.5">
+      <div className="shrink-0 border-b border-line px-4 py-2.5">
         <p className="text-xs font-semibold uppercase tracking-wide text-mute">
           Group chat
         </p>
       </div>
 
-      <div aria-live="polite">
-        <ChatMessageList bottomRef={bottomRef}>
+      <div
+        ref={listRef}
+        className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3 py-3"
+        aria-live="polite"
+        onScroll={handleListScroll}
+      >
         {loading ? (
           <p className="text-sm text-mute">Loading chat…</p>
         ) : messages.length === 0 ? (
@@ -261,34 +291,32 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
             );
           })
         )}
-        </ChatMessageList>
+        <div ref={bottomRef} aria-hidden className="h-px shrink-0" />
       </div>
 
       {error ? (
-        <p className="mx-4 mb-1 rounded-lg bg-risk-danger-bg px-2 py-1.5 text-xs text-risk-danger">
+        <p className="mx-3 mb-1 shrink-0 rounded-lg bg-risk-danger-bg px-2 py-1.5 text-xs text-risk-danger">
           {error}
         </p>
       ) : null}
 
-      <ChatComposer>
-        <form
-          className="mx-auto flex max-w-[42rem] gap-2"
-          onSubmit={handleSend}
-        >
-          <input
-            type="text"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Message the group…"
-            maxLength={2000}
-            enterKeyHint="send"
-            className="min-h-11 min-w-0 flex-1 rounded-full border border-line bg-surface px-4 py-2 text-base text-ink outline-none ring-brand/30 focus:ring-2 sm:text-sm"
-          />
-          <Button type="submit" disabled={sending || !draft.trim()}>
-            {sending ? "…" : "Send"}
-          </Button>
-        </form>
-      </ChatComposer>
+      <form
+        className="flex shrink-0 gap-2 border-t border-line p-3"
+        onSubmit={handleSend}
+      >
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Message the group…"
+          maxLength={2000}
+          enterKeyHint="send"
+          className="min-h-11 min-w-0 flex-1 rounded-full border border-line bg-surface px-4 py-2 text-base text-ink outline-none ring-brand/30 focus:ring-2 sm:text-sm"
+        />
+        <Button type="submit" disabled={sending || !draft.trim()}>
+          {sending ? "…" : "Send"}
+        </Button>
+      </form>
     </div>
   );
 }
