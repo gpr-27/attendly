@@ -99,9 +99,12 @@ export function DayAgenda({
     status: Exclude<MarkStatus, "unmarked">,
   ) {
     setSuccess(null);
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, status } : item)),
+    );
     try {
       await markDaySession(id, status);
-      await refresh();
+      void refresh();
       onChanged?.();
       if (status === "cancelled") {
         setSuccess("Class cancelled for this date.");
@@ -109,17 +112,24 @@ export function DayAgenda({
         setSuccess("Day marked as holiday.");
       }
     } catch (e) {
+      void refresh();
       setError(e instanceof Error ? e.message : "Could not mark");
     }
   }
 
   async function handleUndo(id: string) {
     setSuccess(null);
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, status: "unmarked" as const } : item,
+      ),
+    );
     try {
       await undoDaySession(id);
-      await refresh();
+      void refresh();
       onChanged?.();
     } catch (e) {
+      void refresh();
       setError(e instanceof Error ? e.message : "Could not undo");
     }
   }

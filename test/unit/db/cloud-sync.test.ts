@@ -11,6 +11,9 @@ import {
   readLocalSnapshot,
   syncAfterBind,
   flushCloudPush,
+  pullCloudToLocal,
+  resetCloudSyncState,
+  setCloudSyncEnabled,
 } from "@/lib/db/cloud-sync";
 import {
   localHasUnsyncedAttendance,
@@ -18,7 +21,13 @@ import {
 } from "@/lib/supabase/merge-snapshot";
 import { emptySnapshot } from "@/lib/supabase/snapshot";
 import { materializeSessions } from "@/lib/timetable";
-import type { AttendanceRecord, ClassSession } from "@/lib/db/types";
+import {
+  defaultSettings,
+  type AttendanceRecord,
+  type ClassSession,
+  type Settings,
+} from "@/lib/db/types";
+import { restoreTestFetch } from "../../setup";
 
 function sessionRow(id: string, occurrenceKey: string): ClassSession {
   const stamp = "2026-08-04T09:00:00.000Z";
@@ -96,6 +105,27 @@ describe("mergeSnapshots", () => {
     );
   });
 
+  it("prefers cloud settings on equal updatedAt", () => {
+    const remote = emptySnapshot();
+    const base: Settings = {
+      ...defaultSettings(),
+      semesterStart: "2026-08-01",
+      semesterEnd: "2026-12-01",
+      targetPct: 75,
+      onboarded: true,
+      updatedAt: "2026-08-04T10:00:00.000Z",
+    };
+    remote.settings = base;
+    const local = emptySnapshot();
+    local.settings = {
+      ...base,
+      targetPct: 80,
+    };
+
+    const merged = mergeSnapshots(remote, local);
+    expect(merged.settings?.targetPct).toBe(75);
+  });
+
   it("detects unsynced local attendance", () => {
     const remote = emptySnapshot();
     const local = emptySnapshot();
@@ -106,17 +136,18 @@ describe("mergeSnapshots", () => {
 });
 
 describe("syncAfterBind", () => {
-  const originalFetch = globalThis.fetch;
-
   beforeEach(async () => {
+    resetCloudSyncState();
     await clearAllData();
   });
 
   afterEach(() => {
-    vi.stubGlobal("fetch", originalFetch);
+    resetCloudSyncState();
+    restoreTestFetch();
   });
 
   it("preserves local marks when cloud pull is stale", async () => {
+    setCloudSyncEnabled(false);
     await saveSettings({
       semesterStart: "2026-08-04",
       semesterEnd: "2026-08-08",
@@ -148,6 +179,7 @@ describe("syncAfterBind", () => {
     const localBefore = await readLocalSnapshot();
     expect(localBefore.attendanceRecords).toHaveLength(1);
 
+    setCloudSyncEnabled(true);
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -185,7 +217,18 @@ describe("syncAfterBind", () => {
 });
 
 describe("flushCloudPush", () => {
+  beforeEach(async () => {
+    resetCloudSyncState();
+    await clearAllData();
+  });
+
+  afterEach(() => {
+    resetCloudSyncState();
+    restoreTestFetch();
+  });
+
   it("pushes again after waiting for an in-flight push", async () => {
+    setCloudSyncEnabled(false);
     await saveSettings({
       semesterStart: "2026-08-04",
       semesterEnd: "2026-08-08",
@@ -261,10 +304,15 @@ describe("flushCloudPush", () => {
       }),
     );
 
+    setCloudSyncEnabled(true);
+    setCloudSyncEnabled(false);
     await markAttendance(sessions[0]!.id, "present");
+    setCloudSyncEnabled(true);
     const firstFlush = flushCloudPush();
     await new Promise((r) => setTimeout(r, 5));
+    setCloudSyncEnabled(false);
     await markAttendance(sessions[1]!.id, "present");
+    setCloudSyncEnabled(true);
     releaseFirstPush();
     await firstFlush;
     await flushCloudPush();
@@ -272,5 +320,143 @@ describe("flushCloudPush", () => {
     expect(pushBodies.length).toBe(2);
     expect(pushBodies[0]?.attendanceRecords).toHaveLength(1);
     expect(pushBodies[1]?.attendanceRecords).toHaveLength(2);
+  });
+});
+
+describe("syncCriticalToCloud", () => {
+  beforeEach(async () => {
+    resetCloudSyncState();
+    await clearAllData();
+  });
+
+  afterEach(() => {
+    resetCloudSyncState();
+    restoreTestFetch();
+  });
+
+  it("pushes immediately after markAttendance", async () => {
+    setCloudSyncEnabled(false);
+    await saveSettings({
+      semesterStart: "2026-08-04",
+      semesterEnd: "2026-08-08",
+      workingDays: [1, 2, 3, 4, 5],
+      targetPct: 75,
+      bufferPct: 0,
+      onboarded: true,
+    });
+    const subject = await addSubject({
+      name: "Physics",
+      shortCode: "PHY",
+      color: "#dc2626",
+    });
+    await addSeries({
+      subjectId: subject.id,
+      dayOfWeek: 2,
+      startTime: "09:00",
+      endTime: "10:00",
+      sessionType: "lecture",
+      effectiveFrom: "2026-08-04",
+      countsTowardAttendance: true,
+    });
+    await materializeSessions({ from: "2026-08-04", to: "2026-08-04" });
+    setCloudSyncEnabled(true);
+    const { listSessions } = await import("@/lib/db");
+    const sessions = await listSessions();
+    expect(sessions.length).toBeGreaterThan(0);
+
+    let pushCount = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.href
+              : input.url;
+        if (!url.includes("/api/sync")) {
+          throw new Error(`Unexpected fetch: ${url}`);
+        }
+        if ((init?.method ?? "GET").toUpperCase() === "PUT") {
+          pushCount += 1;
+          return new Response(JSON.stringify({ ok: true }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        return new Response(
+          JSON.stringify({ ok: true, hasData: false, snapshot: emptySnapshot() }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }),
+    );
+
+    await markAttendance(sessions[0]!.id, "present");
+    expect(pushCount).toBe(0);
+    expect(await listAttendance()).toHaveLength(1);
+    await flushCloudPush();
+    expect(pushCount).toBe(1);
+  });
+});
+
+describe("pullCloudToLocal", () => {
+  beforeEach(async () => {
+    resetCloudSyncState();
+    await clearAllData();
+  });
+
+  afterEach(() => {
+    resetCloudSyncState();
+    restoreTestFetch();
+  });
+
+  it("hydrates Dexie from cloud snapshot", async () => {
+    const cloud = emptySnapshot();
+    cloud.settings = {
+      ...defaultSettings(),
+      semesterStart: "2026-08-01",
+      semesterEnd: "2026-12-01",
+      targetPct: 85,
+      onboarded: true,
+      updatedAt: "2026-08-06T00:00:00.000Z",
+    };
+    cloud.subjects = [
+      {
+        id: "sub-cloud",
+        name: "Cloud Subject",
+        shortCode: "CLD",
+        color: "#000",
+        archived: false,
+        createdAt: "2026-08-01T00:00:00.000Z",
+        updatedAt: "2026-08-01T00:00:00.000Z",
+      },
+    ];
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.href
+              : input.url;
+        if (url.includes("/api/sync")) {
+          return new Response(
+            JSON.stringify({ ok: true, hasData: true, snapshot: cloud }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        throw new Error(`Unexpected fetch: ${url}`);
+      }),
+    );
+
+    await clearAllData();
+    const pulled = await pullCloudToLocal();
+    expect(pulled).toBe(true);
+    const local = await readLocalSnapshot();
+    expect(local.settings?.targetPct).toBe(85);
+    expect(local.subjects).toHaveLength(1);
+    expect(local.subjects[0]?.shortCode).toBe("CLD");
   });
 });

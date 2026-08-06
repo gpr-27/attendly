@@ -167,15 +167,19 @@ export function TodayScreen() {
   ) {
     setError(null);
     setSuccess(null);
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, status } : item)),
+    );
     try {
       await markDaySession(id, status);
-      await refresh();
+      void refresh();
       if (status === "cancelled") {
         setSuccess("Class cancelled for this date — won’t count toward %.");
       } else if (status === "holiday") {
         setSuccess("Day marked as holiday — teaching suppressed.");
       }
     } catch (err) {
+      void refresh();
       setError(err instanceof Error ? err.message : "Could not save mark");
     }
   }
@@ -183,11 +187,17 @@ export function TodayScreen() {
   async function handleUndo(id: string) {
     setError(null);
     setSuccess(null);
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, status: "unmarked" as const } : item,
+      ),
+    );
     try {
       await undoDaySession(id);
-      await refresh();
+      void refresh();
       setSuccess("Mark cleared.");
     } catch (err) {
+      void refresh();
       setError(err instanceof Error ? err.message : "Could not undo");
     }
   }
@@ -210,12 +220,19 @@ export function TodayScreen() {
     const unmarked = items.filter((item) => item.status === "unmarked");
     if (unmarked.length === 0) return;
     setError(null);
+    const unmarkedIds = new Set(unmarked.map((item) => item.id));
+    setItems((prev) =>
+      prev.map((item) =>
+        unmarkedIds.has(item.id) ? { ...item, status: "present" as const } : item,
+      ),
+    );
     try {
       for (const item of unmarked) {
         await markDaySession(item.id, "present");
       }
-      await refresh();
+      void refresh();
     } catch (err) {
+      void refresh();
       setError(
         err instanceof Error ? err.message : "Could not mark all present",
       );

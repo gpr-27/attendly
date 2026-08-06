@@ -87,7 +87,7 @@ export function MarkActions({
               title={action.label}
               onClick={() => onMark(action.status)}
               className={cn(
-                "inline-flex min-h-11 min-w-[2.75rem] flex-1 items-center justify-center rounded-lg px-2 text-sm font-semibold tabular-nums transition sm:flex-none",
+                "inline-flex min-h-11 min-w-[2.75rem] flex-1 items-center justify-center rounded-lg px-2 text-sm font-semibold tabular-nums transition-transform duration-75 active:scale-95 sm:flex-none",
                 selected ? action.selectedClass : action.idleClass,
                 selected && "scale-[1.02] shadow-sm",
                 disabled && "pointer-events-none opacity-50",

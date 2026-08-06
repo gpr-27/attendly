@@ -50,6 +50,10 @@ export interface GroupMessage {
   createdAt: string;
   /** Best-effort display name resolved server-side from Clerk. Never guaranteed. */
   senderName?: string | null;
+  /** Client-only: shown immediately before server ack. */
+  pending?: boolean;
+  /** Client-only: send failed — tap retry in error banner. */
+  failed?: boolean;
 }
 
 export interface GroupListResult {

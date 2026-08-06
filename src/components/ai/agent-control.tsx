@@ -6,6 +6,15 @@ import {
   ActionRunner,
   splitAndRunActions,
 } from "@/components/ai/action-runner";
+import {
+  AgentModeTabs,
+  AssistantMessage,
+  ChatMessageList,
+  ChatStarterChips,
+  ChatStatusLine,
+  ChatTypingIndicator,
+  UserMessage,
+} from "@/components/ai/chat-ui";
 import { SubjectInsightCards } from "@/components/ai/subject-insight-cards";
 import {
   AI_PANEL_DOM_ID,
@@ -136,6 +145,7 @@ export function AgentControl({
   const [pausedFlow, setPausedFlow] = useState<AgentFlowState | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const sendLockUntil = useRef(0);
   const lastAutoRef = useRef<string | null>(null);
 
   const insightCards = focus ? buildInsightCards(focus) : [];
@@ -489,7 +499,10 @@ export function AgentControl({
 
   async function handleSubmit(raw?: string) {
     const text = (raw ?? input).trim();
-    if (!text || busy) return;
+    if (!text) return;
+    const now = Date.now();
+    if (now < sendLockUntil.current) return;
+    sendLockUntil.current = now + 400;
     if (!raw) setInput("");
 
     // Resume a paused guide
@@ -861,12 +874,11 @@ export function AgentControl({
           onChange={(e) => setInput(e.target.value)}
           placeholder={placeholder}
           className="min-h-11 flex-1 rounded-xl border border-line bg-surface px-3 text-sm text-ink outline-none ring-brand/30 placeholder:text-mute focus:ring-2"
-          disabled={busy}
         />
         <button
           type="submit"
-          disabled={busy || !input.trim()}
-          className="inline-flex size-11 items-center justify-center rounded-xl bg-brand text-white disabled:opacity-40"
+          disabled={!input.trim()}
+          className="inline-flex size-11 items-center justify-center rounded-xl bg-brand text-white transition duration-75 active:scale-95 disabled:opacity-40"
           aria-label="Send"
         >
           <Send className="size-4" aria-hidden />

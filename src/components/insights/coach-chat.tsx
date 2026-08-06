@@ -1,7 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Send, Sparkles } from "lucide-react";
+import { Send, Sparkles } from "lucide-react";
+import {
+  AssistantMessage,
+  ChatComposer,
+  ChatEmptyState,
+  ChatMessageList,
+  ChatStarterChips,
+  ChatTypingIndicator,
+  UserMessage,
+} from "@/components/ai/chat-ui";
+import { useChatPageScroll } from "@/hooks/use-chat-page-scroll";
 import { cn } from "@/lib/utils/cn";
 import { WEEKLY_DIGEST_MESSAGE } from "@/lib/ai/prompts";
 import type { AiStatus, CoachMode, CoachPlan } from "@/lib/ai/schemas";
@@ -48,8 +58,9 @@ export function CoachChat({
   const [setupHint, setSetupHint] = useState<string | null>(null);
   const [mode, setMode] = useState<CoachMode>("chat");
   const [policyResearch, setPolicyResearch] = useState(false);
-  const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const sendLockUntil = useRef(0);
+  const { bottomRef } = useChatPageScroll([messages, busy]);
 
   const empty =
     Boolean(stats.empty) ||
@@ -58,11 +69,6 @@ export function CoachChat({
   useEffect(() => {
     if (autoFocus) inputRef.current?.focus();
   }, [autoFocus]);
-
-  useEffect(() => {
-    const el = listRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages, busy]);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,7 +95,11 @@ export function CoachChat({
 
   async function send(raw?: string, overrideMode?: CoachMode) {
     const message = (raw ?? input).trim();
-    if (!message || busy) return;
+    if (!message) return;
+    const now = Date.now();
+    if (now < sendLockUntil.current) return;
+    sendLockUntil.current = now + 400;
+
     const activeMode = overrideMode ?? mode;
     setInput("");
     setError(null);
@@ -147,10 +157,7 @@ export function CoachChat({
   return (
     <section
       className={cn(
-        "flex flex-col rounded-2xl border border-line/80 bg-surface-raised",
-        compact
-          ? "min-h-[22rem]"
-          : "min-h-[32rem] lg:min-h-[min(36rem,calc(100dvh-10rem))] lg:max-h-[calc(100dvh-8rem)]",
+        "rounded-2xl border border-line/80 bg-surface-raised shadow-[var(--shadow-card)]",
         className,
       )}
     >
@@ -214,76 +221,55 @@ export function CoachChat({
         </p>
       ) : null}
 
-      <div
-        ref={listRef}
-        className={cn(
-          "min-h-0 flex-1 space-y-2.5 overflow-y-auto px-4 py-3",
-          compact ? "max-h-64 min-h-[12rem]" : "min-h-[14rem]",
-        )}
-      >
+      <ChatMessageList bottomRef={bottomRef}>
         {messages.length === 0 ? (
-          <div className="space-y-3">
-            <p className="text-sm text-ink-soft">
-              {empty
-                ? "No marks yet — ask how to set up, or what to do first. I’ll stay honest about empty stats."
-                : "Ask about bunks, recovery, or run a weekly digest."}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {!compact ? (
-                <button
-                  type="button"
-                  disabled={busy || Boolean(setupHint)}
-                  onClick={() => {
-                    setMode("digest");
-                    void send(WEEKLY_DIGEST_MESSAGE, "digest");
-                  }}
-                  className="rounded-full border border-brand/30 bg-brand/5 px-3 py-1.5 text-left text-xs font-semibold text-brand transition hover:bg-brand/10 disabled:opacity-50"
-                >
-                  This week’s digest
-                </button>
-              ) : null}
-              {STARTERS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  disabled={busy || Boolean(setupHint)}
-                  onClick={() => void send(s, "chat")}
-                  className="rounded-full border border-line bg-mist/50 px-3 py-1.5 text-left text-xs font-medium text-ink-soft transition hover:border-brand/30 hover:bg-brand/5 hover:text-ink disabled:opacity-50"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
+          <div className="space-y-4">
+            <ChatEmptyState
+              title="AI coach"
+              description={
+                empty
+                  ? "No marks yet — ask how to set up, or what to do first. I'll stay honest about empty stats."
+                  : "Ask about bunks, recovery, or run a weekly digest."
+              }
+            />
+            {!compact ? (
+              <button
+                type="button"
+                disabled={busy || Boolean(setupHint)}
+                onClick={() => {
+                  setMode("digest");
+                  void send(WEEKLY_DIGEST_MESSAGE, "digest");
+                }}
+                className="rounded-full border border-brand/30 bg-brand/5 px-3.5 py-2 text-left text-xs font-semibold text-brand shadow-[var(--shadow-card)] transition hover:bg-brand/10 disabled:opacity-50"
+              >
+                This week&apos;s digest
+              </button>
+            ) : null}
+            <ChatStarterChips
+              starters={STARTERS}
+              disabled={busy || Boolean(setupHint)}
+              onPick={(s) => void send(s, "chat")}
+            />
           </div>
         ) : (
           messages.map((m, i) => (
-            <div key={`${m.role}-${i}`} className="space-y-2">
-              <div
-                className={cn(
-                  "rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
-                  m.role === "user"
-                    ? "ml-8 bg-brand text-white"
-                    : "mr-6 bg-mist/70 text-ink ring-1 ring-line/60",
-                )}
-              >
-                {m.text}
-              </div>
+            <div key={`${m.role}-${i}-${m.text.slice(0, 24)}`} className="space-y-2">
+              {m.role === "user" ? (
+                <UserMessage text={m.text} />
+              ) : (
+                <AssistantMessage text={m.text} />
+              )}
               {m.plan ? <PlanCard plan={m.plan} /> : null}
               {m.usedPolicyResearch ? (
-                <p className="mr-6 text-[0.65rem] text-mute">
+                <p className="ml-9 text-[0.6875rem] text-mute">
                   Included optional policy research (not used for %).
                 </p>
               ) : null}
             </div>
           ))
         )}
-        {busy ? (
-          <p className="inline-flex items-center gap-2 text-xs text-mute">
-            <Loader2 className="size-3.5 animate-spin" aria-hidden />
-            Thinking…
-          </p>
-        ) : null}
-      </div>
+        {busy ? <ChatTypingIndicator /> : null}
+      </ChatMessageList>
 
       {error ? (
         <p className="mx-4 mb-2 shrink-0 rounded-xl bg-risk-danger-bg px-3 py-2 text-xs text-risk-danger">
@@ -314,20 +300,16 @@ export function CoachChat({
                     ? "Build a week plan…"
                     : "Can I bunk tomorrow?"
           }
-          disabled={busy || Boolean(setupHint)}
+          disabled={Boolean(setupHint)}
           aria-label="Message AI coach"
         />
         <button
           type="submit"
-          disabled={busy || !input.trim() || Boolean(setupHint)}
-          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-brand text-white transition hover:bg-brand-deep disabled:opacity-50"
+          disabled={!input.trim() || Boolean(setupHint)}
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-brand text-white transition duration-75 hover:bg-brand-deep active:scale-95 disabled:opacity-50"
           aria-label="Send"
         >
-          {busy ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden />
-          ) : (
-            <Send className="size-4" aria-hidden />
-          )}
+          <Send className="size-4" aria-hidden />
         </button>
       </form>
     </section>
@@ -336,7 +318,7 @@ export function CoachChat({
 
 function PlanCard({ plan }: { plan: CoachPlan }) {
   return (
-    <div className="mr-6 rounded-xl border border-line/70 bg-surface px-3 py-2.5 text-xs text-ink">
+    <div className="ml-9 rounded-xl border border-line/70 bg-surface px-3.5 py-2.5 text-xs text-ink shadow-[var(--shadow-card)]">
       {plan.weekFocus ? (
         <p className="font-semibold text-ink">{plan.weekFocus}</p>
       ) : (
