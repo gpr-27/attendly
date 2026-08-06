@@ -9,11 +9,13 @@ export type {
   GroupDetail,
   GroupListResult,
   GroupMember,
+  GroupMemberListResult,
   GroupMessage,
   GroupRole,
 } from "./types";
 export {
   buildGroupSlug,
+  canDeleteGroupMessage,
   clampPage,
   clampPageSize,
   escapeIlikePattern,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildGroupSlug,
+  canDeleteGroupMessage,
   escapeIlikePattern,
   normalizeSearchQuery,
   slugifyGroupName,
@@ -49,5 +50,47 @@ describe("escapeIlikePattern", () => {
 describe("normalizeSearchQuery", () => {
   it("trims and caps length", () => {
     expect(normalizeSearchQuery("  os lab  ")).toBe("os lab");
+  });
+});
+
+describe("canDeleteGroupMessage", () => {
+  it("allows authors to delete their own messages", () => {
+    expect(
+      canDeleteGroupMessage({
+        authorId: "user_a",
+        actorId: "user_a",
+        actorRole: "member",
+      }),
+    ).toBe(true);
+  });
+
+  it("allows admins to delete any message", () => {
+    expect(
+      canDeleteGroupMessage({
+        authorId: "user_a",
+        actorId: "user_b",
+        actorRole: "admin",
+      }),
+    ).toBe(true);
+  });
+
+  it("denies non-authors who are not admins", () => {
+    expect(
+      canDeleteGroupMessage({
+        authorId: "user_a",
+        actorId: "user_b",
+        actorRole: "member",
+      }),
+    ).toBe(false);
+  });
+
+  it("denies non-members", () => {
+    expect(
+      canDeleteGroupMessage({
+        authorId: "user_a",
+        actorId: "user_b",
+        actorRole: null,
+      }),
+    ).toBe(false);
   });
 });

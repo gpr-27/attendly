@@ -6,6 +6,7 @@ import type {
   Group,
   GroupDetail,
   GroupListResult,
+  GroupMemberListResult,
   GroupMessage,
 } from "./types";
 
@@ -108,6 +109,23 @@ export async function sendGroupMessageRequest(
     body: JSON.stringify({ body }),
   });
   return asJson<GroupMessage>(res);
+}
+
+export async function fetchGroupMembers(
+  groupId: string,
+): Promise<GroupMemberListResult> {
+  const res = await fetch(`/api/groups/${groupId}/members`, { method: "GET" });
+  return asJson<GroupMemberListResult>(res);
+}
+
+export async function deleteGroupMessageRequest(
+  groupId: string,
+  messageId: string,
+): Promise<{ deleted: boolean }> {
+  const res = await fetch(`/api/groups/${groupId}/messages/${messageId}`, {
+    method: "DELETE",
+  });
+  return asJson(res);
 }
 
 export { GroupApiError };
