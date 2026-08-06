@@ -393,10 +393,8 @@ describe("syncCriticalToCloud", () => {
     );
 
     await markAttendance(sessions[0]!.id, "present");
-    expect(pushCount).toBe(0);
-    expect(await listAttendance()).toHaveLength(1);
-    await flushCloudPush();
     expect(pushCount).toBe(1);
+    expect(await listAttendance()).toHaveLength(1);
   });
 });
 
