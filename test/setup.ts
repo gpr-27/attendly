@@ -55,8 +55,30 @@ export function restoreTestFetch(): void {
 
 restoreTestFetch();
 
+function ensureBrowserStorage(): void {
+  if (typeof window === "undefined") return;
+  if (typeof window.localStorage?.getItem === "function") return;
+  const store = new Map<string, string>();
+  Object.defineProperty(window, "localStorage", {
+    value: {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        store.set(k, v);
+      },
+      removeItem: (k: string) => {
+        store.delete(k);
+      },
+      clear: () => store.clear(),
+      length: 0,
+      key: () => null,
+    },
+    configurable: true,
+  });
+}
+
 /** Per-test Clerk-user Dexie bind (export/import require getBoundUserId()). */
 beforeEach(async () => {
+  ensureBrowserStorage();
   resetCloudSyncState();
   restoreTestFetch();
   await bindDatabaseForUser("user_test_vitest");

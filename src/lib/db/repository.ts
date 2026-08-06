@@ -405,7 +405,7 @@ export async function markAttendance(
       markedAt: nowIso(),
     }
     await db.attendanceRecords.put(next)
-    touchCloud()
+    await touchCloudCritical()
     return next
   }
   const row: AttendanceRecord = {
@@ -416,7 +416,7 @@ export async function markAttendance(
     note,
   }
   await db.attendanceRecords.add(row)
-  touchCloud()
+  await touchCloudCritical()
   return row
 }
 
@@ -424,7 +424,7 @@ export async function clearAttendance(sessionId: string): Promise<void> {
   const row = await getAttendanceForSession(sessionId)
   if (row) {
     await db.attendanceRecords.delete(row.id)
-    touchCloud()
+    await touchCloudCritical()
   }
 }
 
