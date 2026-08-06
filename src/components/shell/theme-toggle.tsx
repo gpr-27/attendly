@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Monitor, Moon, Sun } from "lucide-react";
 import type { ThemeMode } from "@/lib/db/types";
-import { refreshThemeFromSettings } from "@/components/shell/app-providers";
+import { applyDocumentTheme } from "@/components/shell/app-providers";
 import { cn } from "@/lib/utils/cn";
 
 const OPTIONS: { value: ThemeMode; label: string; icon: typeof Sun }[] = [
@@ -48,15 +48,19 @@ export function ThemeToggle({
 
   async function setMode(next: ThemeMode) {
     if (busy || next === theme) return;
+    const previous = theme;
+    // Paint immediately — do not wait for Dexie/cloud (was the lag bug).
+    applyDocumentTheme(next);
+    setTheme(next);
+    onChanged?.(next);
     setBusy(true);
     try {
       const { saveSettings } = await import("@/lib/db");
-      await saveSettings({ theme: next });
-      setTheme(next);
-      await refreshThemeFromSettings();
-      onChanged?.(next);
+      await saveSettings({ theme: next }, { awaitCloud: false });
     } catch {
-      /* leave previous theme */
+      applyDocumentTheme(previous);
+      setTheme(previous);
+      onChanged?.(previous);
     } finally {
       setBusy(false);
     }

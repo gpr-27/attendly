@@ -60,6 +60,7 @@ export async function getSettings(): Promise<Settings> {
 
 export async function saveSettings(
   patch: Partial<Omit<Settings, "id">>,
+  options?: { awaitCloud?: boolean },
 ): Promise<Settings> {
   const current = await getSettings()
   const next: Settings = {
@@ -69,7 +70,12 @@ export async function saveSettings(
     updatedAt: nowIso(),
   }
   await db.settings.put(next)
-  await touchCloudCritical()
+  // Theme / display prefs should not block the UI on a full cloud round-trip.
+  if (options?.awaitCloud === false) {
+    touchCloud()
+  } else {
+    await touchCloudCritical()
+  }
   return next
 }
 

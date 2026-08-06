@@ -114,7 +114,7 @@ export function GroupDetailPage() {
 
   if (loading) {
     return (
-      <main className="mx-auto w-full max-w-3xl px-4 pb-4 pt-6 sm:px-6 lg:px-8">
+      <main className="mx-auto flex h-[calc(100dvh-3.25rem)] w-full max-w-3xl flex-col px-4 pt-6 md:h-dvh sm:px-6 lg:px-8 -mb-[calc(var(--nav-total-h)+1.25rem)] pb-[calc(var(--nav-total-h)+0.5rem)] md:-mb-6 md:pb-4">
         <p className="text-sm text-mute">Loading group…</p>
       </main>
     );
@@ -139,7 +139,12 @@ export function GroupDetailPage() {
 
   return (
     <>
-      <main className="mx-auto w-full max-w-3xl px-4 pb-[calc(var(--nav-total-h)+5.5rem)] pt-6 sm:px-6 lg:px-8">
+      {/*
+        Definite viewport height (not min-height) so GroupChat's flex-1 +
+        overflow-y-auto gets a bounded box and messages can scroll inside.
+        Negative margin cancels AppFrame bottom padding; pb clears mobile nav.
+      */}
+      <main className="mx-auto flex h-[calc(100dvh-3.25rem)] w-full max-w-3xl flex-col px-4 pt-6 md:h-dvh sm:px-6 lg:px-8 -mb-[calc(var(--nav-total-h)+1.25rem)] pb-[calc(var(--nav-total-h)+0.5rem)] md:-mb-6 md:pb-4">
         <Link
           href="/groups"
           className="mb-3 inline-flex min-h-10 shrink-0 items-center gap-1.5 text-sm font-medium text-mute hover:text-ink"
@@ -217,7 +222,7 @@ export function GroupDetailPage() {
         <GroupChat
           groupId={groupId}
           enabled={group.isMember}
-          className="mt-1"
+          className="min-h-0 flex-1"
         />
       </main>
 

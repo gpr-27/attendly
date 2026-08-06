@@ -7,7 +7,8 @@ import type { ThemeMode } from "@/lib/db/types";
 
 const THEME_EVENT = "attendly-theme-changed";
 
-function applyThemeMode(theme: ThemeMode) {
+/** Resolve light/dark and paint onto <html> immediately (no I/O). */
+export function applyDocumentTheme(theme: ThemeMode) {
   const root = document.documentElement;
   let resolved: "light" | "dark";
   if (theme === "system") {
@@ -36,7 +37,7 @@ async function syncFromSettings() {
   const { getBoundUserId, getSettings } = await import("@/lib/db");
   if (!getBoundUserId()) return null;
   const settings = await getSettings();
-  applyThemeMode(settings.theme);
+  applyDocumentTheme(settings.theme);
   applyA11yPrefs({
     highContrast: settings.highContrast,
     reducedMotion: settings.reducedMotion,
@@ -55,7 +56,7 @@ function ThemeSync({ children }: { children: React.ReactNode }) {
         const { getSettings } = await import("@/lib/db");
         const settings = await getSettings();
         if (cancelled || settings.theme !== "system") return;
-        applyThemeMode("system");
+        applyDocumentTheme("system");
       })();
     }
 
@@ -96,6 +97,6 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
 
 /** Call after saving a11y/theme in Settings so UI updates without reload. */
 export async function refreshThemeFromSettings(): Promise<void> {
+  // Apply once here — do not also dispatch THEME_EVENT (that re-reads + re-applies).
   await syncFromSettings();
-  window.dispatchEvent(new Event(THEME_EVENT));
 }
