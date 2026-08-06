@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { MessageSquareText } from "lucide-react";
 import { AiAssistantPanel } from "@/components/ai/ai-assistant-panel";
 import { useAiFocusOptional } from "@/components/ai/ai-focus-context";
@@ -20,6 +20,7 @@ type AiFabProps = {
 export function AiFab({ pageKey, className }: AiFabProps) {
   const focusCtx = useAiFocusOptional();
   const open = focusCtx?.sheetOpen ?? false;
+  const scrollRootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     focusCtx?.setSheetOpen(false);
@@ -49,18 +50,24 @@ export function AiFab({ pageKey, className }: AiFabProps) {
       </button>
 
       {open ? (
-        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal>
+        <div
+          ref={scrollRootRef}
+          className="fixed inset-0 z-50 overflow-y-auto md:hidden"
+          role="dialog"
+          aria-modal
+        >
           <button
             type="button"
-            className="absolute inset-0 bg-ink/35 backdrop-blur-[2px]"
+            className="sticky top-0 min-h-[20vh] w-full bg-ink/35 backdrop-blur-[2px]"
             aria-label="Close AI"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute inset-x-0 bottom-0 max-h-[92dvh] overflow-y-auto rounded-t-2xl border border-line bg-surface-raised p-3 shadow-xl safe-area-pb sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-[min(24rem,calc(100vw-2rem))] sm:rounded-2xl">
+          <div className="relative -mt-[20vh] min-h-[80vh] rounded-t-2xl border border-line bg-surface-raised p-3 shadow-xl safe-area-pb sm:mx-auto sm:mb-4 sm:mt-0 sm:max-w-[min(24rem,calc(100vw-2rem))] sm:rounded-2xl">
             <AiAssistantPanel
               pageKey={pageKey}
               compact
               autoFocus={!focusCtx?.focus}
+              scrollRootRef={scrollRootRef}
               onClose={() => setOpen(false)}
             />
           </div>

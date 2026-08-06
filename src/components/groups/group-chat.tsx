@@ -3,6 +3,8 @@
 import { useAuth } from "@clerk/nextjs";
 import { MoreVertical, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ChatComposer, ChatMessageList } from "@/components/ai/chat-ui";
+import { useChatPageScroll } from "@/hooks/use-chat-page-scroll";
 import { Button } from "@/components/ui/button";
 import {
   deleteGroupMessageRequest,
@@ -14,7 +16,6 @@ import type { GroupMessage } from "@/lib/groups/types";
 import { cn } from "@/lib/utils/cn";
 
 const POLL_MS = 3000;
-const NEAR_BOTTOM_PX = 80;
 const SEND_DEBOUNCE_MS = 400;
 
 function formatTime(iso: string): string {
@@ -45,32 +46,17 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [retryDraft, setRetryDraft] = useState<string | null>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const lastCreatedAt = useRef<string | null>(null);
-  const stickToBottom = useRef(true);
-  const initialScrollDone = useRef(false);
   const sendLockUntil = useRef(0);
-
-  const isNearBottom = useCallback(() => {
-    const el = listRef.current;
-    if (!el) return true;
-    return el.scrollHeight - el.scrollTop - el.clientHeight <= NEAR_BOTTOM_PX;
-  }, []);
-
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
-    const el = listRef.current;
-    if (el) {
-      el.scrollTo({ top: el.scrollHeight, behavior });
-      return;
-    }
-    bottomRef.current?.scrollIntoView({ behavior });
-  }, []);
+  const lastCreatedAt = useRef<string | null>(null);
+  const { bottomRef, scrollToBottom, stickToBottom } = useChatPageScroll([
+    enabled,
+    loading,
+    messages.length,
+  ]);
 
   const loadInitial = useCallback(async () => {
     setLoading(true);
     setError(null);
-    initialScrollDone.current = false;
     try {
       const result = await fetchGroupMessages(groupId, { limit: 50 });
       setMessages(result.messages);
@@ -94,7 +80,7 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
         after: lastCreatedAt.current,
       });
       if (result.messages.length === 0) return;
-      const wasNearBottom = isNearBottom();
+      const wasNearBottom = stickToBottom.current;
       setMessages((prev) => {
         const ids = new Set(prev.map((m) => m.id));
         const merged = [...prev];
@@ -109,20 +95,12 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
     } catch {
       /* polling is best-effort */
     }
-  }, [groupId, isNearBottom]);
+  }, [groupId, stickToBottom]);
 
   useEffect(() => {
     if (!enabled) return;
     void loadInitial();
   }, [enabled, loadInitial]);
-
-  useEffect(() => {
-    if (!enabled || loading) return;
-    if (!stickToBottom.current) return;
-    const behavior: ScrollBehavior = initialScrollDone.current ? "smooth" : "auto";
-    scrollToBottom(behavior);
-    initialScrollDone.current = true;
-  }, [enabled, loading, messages.length, scrollToBottom]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -136,10 +114,6 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
     window.addEventListener("click", close);
     return () => window.removeEventListener("click", close);
   }, [menuOpenId]);
-
-  function handleListScroll() {
-    stickToBottom.current = isNearBottom();
-  }
 
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -218,22 +192,17 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
   return (
     <div
       className={cn(
-        "flex min-h-0 flex-col overflow-hidden rounded-2xl border border-line bg-surface-raised shadow-[var(--shadow-card)]",
+        "rounded-2xl border border-line bg-surface-raised shadow-[var(--shadow-card)]",
         className,
       )}
     >
-      <div className="shrink-0 border-b border-line px-4 py-2.5">
+      <div className="border-b border-line px-4 py-2.5">
         <p className="text-xs font-semibold uppercase tracking-wide text-mute">
           Group chat
         </p>
       </div>
 
-      <div
-        ref={listRef}
-        className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-3 py-3"
-        aria-live="polite"
-        onScroll={handleListScroll}
-      >
+      <ChatMessageList bottomRef={bottomRef}>
         {loading ? (
           <p className="text-sm text-mute">Loading chat…</p>
         ) : messages.length === 0 ? (
@@ -250,78 +219,86 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
               <div
                 key={msg.id}
                 className={cn(
-                  "group/msg flex flex-col",
-                  mine ? "items-end" : "items-start",
+                  "group/msg flex w-full",
+                  mine ? "justify-end" : "justify-start",
                 )}
               >
                 <div
                   className={cn(
-                    "mb-0.5 flex max-w-[85%] items-center gap-1",
-                    mine ? "flex-row-reverse" : "flex-row",
+                    "flex min-w-0 max-w-[min(92%,32rem)] flex-col gap-0.5",
+                    mine ? "items-end" : "items-start",
                   )}
                 >
-                  <p className="text-[0.65rem] font-medium text-mute">
-                    {label} · {formatTime(msg.createdAt)}
-                    {optimistic ? " · sending…" : null}
-                  </p>
-                  {mine && !optimistic ? (
-                    <div className="relative shrink-0">
-                      <button
-                        type="button"
-                        aria-label="Message options"
-                        aria-expanded={menuOpen}
-                        disabled={deletingId === msg.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setMenuOpenId(menuOpen ? null : msg.id);
-                        }}
-                        className={cn(
-                          "flex min-h-7 min-w-7 items-center justify-center rounded-md text-mute transition-opacity hover:bg-mist hover:text-ink",
-                          menuOpen ? "opacity-100" : "opacity-0 group-hover/msg:opacity-100 focus:opacity-100",
-                        )}
-                      >
-                        <MoreVertical className="size-3.5" aria-hidden />
-                      </button>
-                      {menuOpen ? (
-                        <div
-                          role="menu"
-                          className="absolute top-full z-10 mt-1 min-w-[7rem] rounded-lg border border-line bg-surface py-1 shadow-lg"
-                          onClick={(e) => e.stopPropagation()}
+                  <div
+                    className={cn(
+                      "flex items-center gap-1",
+                      mine ? "flex-row-reverse" : "flex-row",
+                    )}
+                  >
+                    <p className="px-1 text-[0.6875rem] font-medium text-mute">
+                      {label} · {formatTime(msg.createdAt)}
+                      {optimistic ? " · sending…" : null}
+                    </p>
+                    {mine && !optimistic ? (
+                      <div className="relative shrink-0">
+                        <button
+                          type="button"
+                          aria-label="Message options"
+                          aria-expanded={menuOpen}
+                          disabled={deletingId === msg.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMenuOpenId(menuOpen ? null : msg.id);
+                          }}
+                          className={cn(
+                            "flex min-h-7 min-w-7 items-center justify-center rounded-md text-mute transition-opacity hover:bg-mist hover:text-ink",
+                            menuOpen
+                              ? "opacity-100"
+                              : "opacity-0 group-hover/msg:opacity-100 focus:opacity-100",
+                          )}
                         >
-                          <button
-                            type="button"
-                            role="menuitem"
-                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-risk-danger hover:bg-risk-danger-bg"
-                            onClick={() => void handleDelete(msg.id)}
+                          <MoreVertical className="size-3.5" aria-hidden />
+                        </button>
+                        {menuOpen ? (
+                          <div
+                            role="menu"
+                            className="absolute top-full z-10 mt-1 min-w-[7rem] rounded-lg border border-line bg-surface py-1 shadow-lg"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <Trash2 className="size-3.5" aria-hidden />
-                            Delete
-                          </button>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-risk-danger hover:bg-risk-danger-bg"
+                              onClick={() => void handleDelete(msg.id)}
+                            >
+                              <Trash2 className="size-3.5" aria-hidden />
+                              Delete
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                  <p
+                    className={cn(
+                      "rounded-2xl px-4 py-2.5 text-[0.9375rem] leading-[1.6] shadow-[var(--shadow-card)] transition-opacity",
+                      mine
+                        ? "rounded-br-md bg-brand text-white"
+                        : "rounded-bl-md border border-line/70 bg-surface-raised text-ink",
+                      optimistic && "opacity-80",
+                    )}
+                  >
+                    {msg.body}
+                  </p>
                 </div>
-                <p
-                  className={cn(
-                    "max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-snug transition-opacity",
-                    mine
-                      ? "bg-brand text-white"
-                      : "bg-mist text-ink ring-1 ring-line/60",
-                    optimistic && "opacity-80",
-                  )}
-                >
-                  {msg.body}
-                </p>
               </div>
             );
           })
         )}
-        <div ref={bottomRef} aria-hidden className="h-px shrink-0" />
-      </div>
+      </ChatMessageList>
 
       {error ? (
-        <div className="mx-3 mb-1 shrink-0 space-y-1">
+        <div className="mx-3 mb-1 space-y-1">
           <p className="rounded-lg bg-risk-danger-bg px-2 py-1.5 text-xs text-risk-danger">
             {error}
           </p>
@@ -341,27 +318,29 @@ export function GroupChat({ groupId, enabled, className }: GroupChatProps) {
         </div>
       ) : null}
 
-      <form
-        className="flex shrink-0 gap-2 border-t border-line p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
-        onSubmit={handleSend}
-      >
-        <input
-          type="text"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Message the group…"
-          maxLength={2000}
-          enterKeyHint="send"
-          className="min-h-11 min-w-0 flex-1 rounded-xl border border-line bg-surface px-3 py-2 text-base text-ink outline-none ring-brand/30 focus:ring-2 sm:text-sm"
-        />
-        <Button
-          type="submit"
-          disabled={!draft.trim()}
-          className="transition-transform duration-75 active:scale-95"
+      <ChatComposer>
+        <form
+          className="mx-auto flex max-w-[42rem] gap-2"
+          onSubmit={handleSend}
         >
-          Send
-        </Button>
-      </form>
+          <input
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Message the group…"
+            maxLength={2000}
+            enterKeyHint="send"
+            className="min-h-11 min-w-0 flex-1 rounded-full border border-line bg-surface px-4 text-sm text-ink outline-none ring-brand/30 placeholder:text-mute focus:ring-2"
+          />
+          <Button
+            type="submit"
+            disabled={!draft.trim()}
+            className="rounded-full transition-transform duration-75 active:scale-95"
+          >
+            Send
+          </Button>
+        </form>
+      </ChatComposer>
     </div>
   );
 }

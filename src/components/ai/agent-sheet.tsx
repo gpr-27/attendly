@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useRef } from "react";
 import { Sparkles } from "lucide-react";
 import { AgentControl } from "@/components/ai/agent-control";
 import { useAiFocusOptional } from "@/components/ai/ai-focus-context";
@@ -26,15 +26,7 @@ export function AgentSheet({
 }: AgentSheetProps) {
   const focusCtx = useAiFocusOptional();
   const config = getPageAiByKey(pageKey);
-
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
+  const scrollRootRef = useRef<HTMLDivElement>(null);
 
   function close() {
     onOpenChange(false);
@@ -44,19 +36,22 @@ export function AgentSheet({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50" role="dialog" aria-modal aria-label="Agent Control">
+    <div
+      ref={scrollRootRef}
+      className="fixed inset-0 z-50 overflow-y-auto"
+      role="dialog"
+      aria-modal
+      aria-label="Agent Control"
+    >
       <button
         type="button"
-        className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]"
+        className="sticky top-0 min-h-[8vh] w-full bg-ink/40 backdrop-blur-[2px] md:min-h-[12vh]"
         aria-label="Close agent"
         onClick={close}
       />
       <div
         className={cn(
-          "absolute inset-0 flex flex-col bg-surface-raised shadow-xl",
-          "md:inset-4 md:rounded-2xl md:border md:border-line",
-          "max-h-[100dvh] pb-[env(safe-area-inset-bottom,0px)]",
-          "lg:inset-[5vh_max(1rem,calc((100vw-48rem)/2))] lg:max-h-[92dvh]",
+          "relative -mt-[8vh] min-h-[92vh] bg-surface-raised shadow-xl md:-mt-[12vh] md:mx-auto md:mb-8 md:mt-0 md:max-w-3xl md:min-h-0 md:rounded-2xl md:border md:border-line",
         )}
       >
         <AgentControl
@@ -64,9 +59,10 @@ export function AgentSheet({
           title="Agent Control"
           fill
           autoFocus={!focusCtx?.focus}
+          scrollRootRef={scrollRootRef}
           onClose={close}
           onDataChanged={onDataChanged}
-          className="h-full min-h-0 rounded-none border-0 shadow-none md:rounded-2xl"
+          className="rounded-none border-0 shadow-none md:rounded-2xl"
         />
       </div>
     </div>

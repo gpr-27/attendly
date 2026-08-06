@@ -1,7 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { Loader2, Send, Sparkles, X } from "lucide-react";
+import {
+  AssistantMessage,
+  ChatComposer,
+  ChatEmptyState,
+  ChatMessageList,
+  ChatStarterChips,
+  ChatTypingIndicator,
+  UserMessage,
+} from "@/components/ai/chat-ui";
+import { useChatPageScroll } from "@/hooks/use-chat-page-scroll";
 import { SubjectInsightCards } from "@/components/ai/subject-insight-cards";
 import {
   AI_PANEL_DOM_ID,
@@ -42,6 +52,8 @@ type AiAssistantPanelProps = {
    * Default true when a focus payload is present.
    */
   autoInsight?: boolean;
+  /** Optional scroll container (mobile sheet). Defaults to window. */
+  scrollRootRef?: RefObject<HTMLElement | null>;
 };
 
 /**
@@ -61,6 +73,7 @@ export function AiAssistantPanel({
   showModes,
   onClose,
   autoInsight = true,
+  scrollRootRef,
 }: AiAssistantPanelProps) {
   const config = getPageAiByKey(pageKey);
   const starters = startersProp ?? config.starters;
@@ -94,7 +107,6 @@ export function AiAssistantPanel({
   });
 
   const [input, setInput] = useState("");
-  const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const lastAutoRef = useRef<string | null>(null);
 
@@ -103,6 +115,10 @@ export function AiAssistantPanel({
     (Array.isArray(stats.subjects) && stats.subjects.length === 0);
 
   const insightCards = focus ? buildInsightCards(focus) : [];
+  const { bottomRef } = useChatPageScroll(
+    [messages, busy, insightCards.length],
+    scrollRootRef,
+  );
   const focusTitle =
     focus?.kind === "subject"
       ? `${focus.name} · instant insights`
@@ -113,11 +129,6 @@ export function AiAssistantPanel({
   useEffect(() => {
     if (autoFocus) inputRef.current?.focus();
   }, [autoFocus]);
-
-  useEffect(() => {
-    const el = listRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages, busy, insightCards.length]);
 
   // Auto-insight when focus opens / re-clicks — one coach call, no typing.
   useEffect(() => {
@@ -147,8 +158,7 @@ export function AiAssistantPanel({
     <section
       id={AI_PANEL_DOM_ID}
       className={cn(
-        "flex flex-col rounded-2xl border border-line bg-surface-raised shadow-[var(--shadow-card)]",
-        compact ? "min-h-[18rem]" : "min-h-[24rem]",
+        "rounded-2xl border border-line bg-surface-raised shadow-[var(--shadow-card)]",
         focus && "ring-2 ring-brand/25",
         className,
       )}
@@ -222,26 +232,25 @@ export function AiAssistantPanel({
         </div>
       ) : null}
 
-      <div
-        ref={listRef}
-        className={cn(
-          "min-h-0 flex-1 space-y-2.5 overflow-y-auto px-4 py-3",
-          compact ? "max-h-52 min-h-[8rem]" : "max-h-72 min-h-[12rem]",
-        )}
-      >
+      <ChatMessageList bottomRef={bottomRef}>
         {messages.length === 0 && !busy ? (
-          <div className="space-y-3">
-            <p className="text-sm text-ink-soft">
-              {focus
-                ? setupHint
-                  ? "Local cards above use your Dexie marks. Add GROQ_API_KEY for a written digest."
-                  : "Pulling a short coach digest…"
-                : empty
-                  ? "No marks yet — ask how to set up. I’ll stay honest about empty stats."
-                  : "Pick a prompt — answers use your real attendance stats."}
-            </p>
+          <div className="space-y-4">
+            {focus && !setupHint ? (
+              <ChatTypingIndicator label="Pulling digest…" />
+            ) : (
+              <ChatEmptyState
+                title={focus ? `${focus.name} co-pilot` : "Ask your coach"}
+                description={
+                  focus && setupHint
+                    ? "Local cards above use your Dexie marks. Add GROQ_API_KEY for a written digest."
+                    : empty
+                      ? "No marks yet — ask how to set up. I'll stay honest about empty stats."
+                      : "Pick a prompt — answers use your real attendance stats."
+                }
+              />
+            )}
             {showStarters ? (
-              <StarterChips
+              <ChatStarterChips
                 starters={starters}
                 disabled={busy || Boolean(setupHint)}
                 onPick={(s) => void submit(s, mode)}
@@ -252,21 +261,16 @@ export function AiAssistantPanel({
           <>
             {messages.map((m, i) => (
               <div key={`${m.role}-${i}`} className="space-y-2">
-                <div
-                  className={cn(
-                    "rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
-                    m.role === "user"
-                      ? "ml-8 bg-brand text-white"
-                      : "mr-6 bg-mist/70 text-ink ring-1 ring-line/60",
-                  )}
-                >
-                  {m.text}
-                </div>
+                {m.role === "user" ? (
+                  <UserMessage text={m.text} />
+                ) : (
+                  <AssistantMessage text={m.text} />
+                )}
                 {m.plan ? <MiniPlan plan={m.plan} /> : null}
               </div>
             ))}
             {showStarters && messages.length > 0 && !busy ? (
-              <StarterChips
+              <ChatStarterChips
                 starters={starters}
                 disabled={Boolean(setupHint)}
                 onPick={(s) => void submit(s, mode)}
@@ -275,13 +279,8 @@ export function AiAssistantPanel({
             ) : null}
           </>
         )}
-        {busy ? (
-          <p className="inline-flex items-center gap-2 text-xs text-mute">
-            <Loader2 className="size-3.5 animate-spin" aria-hidden />
-            Thinking…
-          </p>
-        ) : null}
-      </div>
+        {busy ? <ChatTypingIndicator /> : null}
+      </ChatMessageList>
 
       {error ? (
         <p className="mx-3 mb-2 shrink-0 rounded-xl bg-risk-danger-bg px-3 py-2 text-xs text-risk-danger">
@@ -289,13 +288,14 @@ export function AiAssistantPanel({
         </p>
       ) : null}
 
-      <form
-        className="flex shrink-0 gap-2 border-t border-line/70 p-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit();
-        }}
-      >
+      <ChatComposer>
+        <form
+          className="mx-auto flex max-w-[42rem] gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submit();
+          }}
+        >
         <input
           ref={inputRef}
           className="min-h-11 flex-1 rounded-full border border-line bg-surface px-4 text-sm text-ink outline-none ring-brand/30 placeholder:text-mute focus:ring-2"
@@ -323,49 +323,15 @@ export function AiAssistantPanel({
             <Send className="size-4" />
           )}
         </button>
-      </form>
+        </form>
+      </ChatComposer>
     </section>
-  );
-}
-
-function StarterChips({
-  starters,
-  disabled,
-  onPick,
-  label,
-}: {
-  starters: string[];
-  disabled?: boolean;
-  onPick: (s: string) => void;
-  label?: string;
-}) {
-  return (
-    <div className="space-y-1.5">
-      {label ? (
-        <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-mute">
-          {label}
-        </p>
-      ) : null}
-      <div className="flex flex-wrap gap-2">
-        {starters.map((s) => (
-          <button
-            key={s}
-            type="button"
-            disabled={disabled}
-            onClick={() => onPick(s)}
-            className="rounded-full border border-line bg-mist/50 px-3 py-1.5 text-left text-xs font-medium text-ink-soft transition hover:border-brand/30 hover:bg-brand/5 hover:text-ink disabled:opacity-50"
-          >
-            {s}
-          </button>
-        ))}
-      </div>
-    </div>
   );
 }
 
 function MiniPlan({ plan }: { plan: CoachPlan }) {
   return (
-    <div className="mr-6 rounded-xl border border-line/70 bg-surface px-3 py-2 text-xs text-ink">
+    <div className="ml-9 rounded-xl border border-line/70 bg-surface px-3.5 py-2.5 text-xs text-ink shadow-[var(--shadow-card)]">
       {plan.weekFocus ? (
         <p className="font-semibold">{plan.weekFocus}</p>
       ) : (
