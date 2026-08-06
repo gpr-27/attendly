@@ -7,6 +7,7 @@ import {
   splitAndRunActions,
 } from "@/components/ai/action-runner";
 import {
+  AgentModeTabs,
   AssistantMessage,
   ChatComposer,
   ChatMessageList,
@@ -663,39 +664,12 @@ export function AgentControl({
             <Sparkles className="size-3.5" aria-hidden />
             {title}
           </p>
-          <div
-            className="mt-2 inline-flex rounded-lg border border-line/80 bg-mist/40 p-0.5"
-            role="tablist"
-            aria-label="Chat or Agent mode"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "chat" && !guiding}
-              onClick={() => setPanelMode("chat")}
-              className={cn(
-                "min-h-10 rounded-md px-3 py-2 text-[0.7rem] font-semibold transition",
-                mode === "chat" && !guiding
-                  ? "bg-surface text-ink shadow-sm"
-                  : "text-mute hover:text-ink",
-              )}
-            >
-              Chat
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "agent" || guiding}
-              onClick={() => setPanelMode("agent")}
-              className={cn(
-                "min-h-10 rounded-md px-3 py-2 text-[0.7rem] font-semibold transition",
-                mode === "agent" || guiding
-                  ? "bg-surface text-ink shadow-sm"
-                  : "text-mute hover:text-ink",
-              )}
-            >
-              Agent
-            </button>
+          <div className="mt-2">
+            <AgentModeTabs
+              mode={mode}
+              guiding={guiding}
+              onChange={setPanelMode}
+            />
           </div>
           <p
             className={cn(
